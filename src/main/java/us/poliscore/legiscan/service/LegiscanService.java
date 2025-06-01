@@ -14,7 +14,11 @@ import java.util.logging.Logger;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import us.poliscore.legiscan.*;
+import us.poliscore.legiscan.LegiscanBillView;
+import us.poliscore.legiscan.LegiscanLegislatorView;
+import us.poliscore.legiscan.LegiscanResponse;
+import us.poliscore.legiscan.LegiscanRollCallView;
+import us.poliscore.legiscan.LegiscanSessionView;
 import us.poliscore.legiscan.cache.LegiscanCache;
 import us.poliscore.legiscan.cache.NoOpLegiscanCache;
 import us.poliscore.legiscan.exception.LegiscanException;
@@ -41,6 +45,10 @@ public class LegiscanService {
 
     public LegiscanService(String apiKey, ObjectMapper objectMapper) {
         this(apiKey, objectMapper, new NoOpLegiscanCache());
+    }
+    
+    public LegiscanService(String apiKey) {
+        this(apiKey, new ObjectMapper(), new NoOpLegiscanCache());
     }
 
     private String buildUrl(String endpoint, String... params) {
