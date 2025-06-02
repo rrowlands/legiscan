@@ -1,4 +1,4 @@
-package us.poliscore.legiscan;
+package us.poliscore.legiscan.view;
 
 public class LegiscanGetTextResponse {
 

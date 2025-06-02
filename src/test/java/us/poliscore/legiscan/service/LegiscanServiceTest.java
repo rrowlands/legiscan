@@ -22,10 +22,10 @@ import org.junit.jupiter.api.Test;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import us.poliscore.legiscan.LegiscanBillView;
-import us.poliscore.legiscan.LegiscanResponse;
 import us.poliscore.legiscan.cache.LegiscanCache;
 import us.poliscore.legiscan.exception.LegiscanException;
+import us.poliscore.legiscan.view.LegiscanBillView;
+import us.poliscore.legiscan.view.LegiscanResponse;
 
 public class LegiscanServiceTest {
 
@@ -51,7 +51,7 @@ public class LegiscanServiceTest {
         bill.setBillId("123");
         bill.setTitle("Test Bill");
 
-        LegiscanResponse<LegiscanBillView> response = new LegiscanResponse<>();
+        LegiscanResponse response = new LegiscanResponse();
         response.setBill(bill);
 
         when(mockCache.get(eq(cacheKey), any(TypeReference.class))).thenReturn(Optional.of(response));

@@ -1,4 +1,4 @@
-package us.poliscore.legiscan;
+package us.poliscore.legiscan.view;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
