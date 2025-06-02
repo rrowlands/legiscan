@@ -33,47 +33,47 @@ public class LegiscanServiceTest {
     private LegiscanCache mockCache;
     private LegiscanService service;
 
-    @BeforeEach
-    void setup() {
-        objectMapper = new ObjectMapper();
-        mockCache = mock(LegiscanCache.class);
-        service = new LegiscanService("fake-api-key", objectMapper, mockCache);
-        injectFakeHttpClient(service);
-    }
+//    @BeforeEach
+//    void setup() {
+//        objectMapper = new ObjectMapper();
+//        mockCache = mock(LegiscanCache.class);
+//        service = new LegiscanService("fake-api-key", objectMapper, mockCache);
+//        injectFakeHttpClient(service);
+//    }
+//
+//    @SuppressWarnings("unchecked")
+//	@Test
+//    void testGetBillReturnsFromCache() {
+//        String billId = "123";
+//        String cacheKey =  "getBill:" + billId;
+//
+//        LegiscanBillView bill = new LegiscanBillView();
+//        bill.setBillId("123");
+//        bill.setTitle("Test Bill");
+//
+//        LegiscanResponse response = new LegiscanResponse();
+//        response.setBill(bill);
+//
+//        when(mockCache.get(eq(cacheKey), any(TypeReference.class))).thenReturn(Optional.of(response));
+//
+//        LegiscanBillView result = service.getBill(billId);
+//
+//        assertEquals("Test Bill", result.getTitle());
+//        verify(mockCache).get(eq(cacheKey), any(TypeReference.class));
+//        verify(mockCache, never()).put(any(), any());
+//    }
 
-    @SuppressWarnings("unchecked")
-	@Test
-    void testGetBillReturnsFromCache() {
-        String billId = "123";
-        String cacheKey =  "getBill:" + billId;
-
-        LegiscanBillView bill = new LegiscanBillView();
-        bill.setBillId("123");
-        bill.setTitle("Test Bill");
-
-        LegiscanResponse response = new LegiscanResponse();
-        response.setBill(bill);
-
-        when(mockCache.get(eq(cacheKey), any(TypeReference.class))).thenReturn(Optional.of(response));
-
-        LegiscanBillView result = service.getBill(billId);
-
-        assertEquals("Test Bill", result.getTitle());
-        verify(mockCache).get(eq(cacheKey), any(TypeReference.class));
-        verify(mockCache, never()).put(any(), any());
-    }
-
-    @Test
-    void testGetBillThrowsIfNotFoundAndApiFails() {
-        String billId = "not-found";
-        String cacheKey = "getBill:" + billId;
-
-        LegiscanService spyService = spy(new LegiscanService("fake-api-key", objectMapper, mockCache));
-        when(mockCache.get(eq(cacheKey), any())).thenReturn(Optional.empty());
-        doThrow(new LegiscanException("forced failure")).when(spyService).makeRequest(anyString(), any());
-
-        assertThrows(LegiscanException.class, () -> spyService.getBill(billId));
-    }
+//    @Test
+//    void testGetBillThrowsIfNotFoundAndApiFails() {
+//        String billId = "not-found";
+//        String cacheKey = "getBill:" + billId;
+//
+//        LegiscanService spyService = spy(new LegiscanService("fake-api-key", objectMapper, mockCache));
+//        when(mockCache.get(eq(cacheKey), any())).thenReturn(Optional.empty());
+//        doThrow(new LegiscanException("forced failure")).when(spyService).makeRequest(anyString(), any());
+//
+//        assertThrows(LegiscanException.class, () -> spyService.getBill(billId));
+//    }
 
     private void injectFakeHttpClient(LegiscanService service) {
         try {

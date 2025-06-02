@@ -40,33 +40,28 @@ import us.poliscore.legiscan.view.LegiscanSupplementView;
  */
 public class LegiscanService {
 
-    private static final String BASE_URL = "https://api.legiscan.com/";
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
-    private static final Logger LOGGER = Logger.getLogger(LegiscanService.class.getName());
+	private static final Logger LOGGER = Logger.getLogger(LegiscanService.class.getName());
+	
+    protected static final String BASE_URL = "https://api.legiscan.com/";
+    protected static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
 
-    private final String apiKey;
-    private final ObjectMapper objectMapper;
-    private final HttpClient httpClient;
-    private final LegiscanCache cache;
+    protected final String apiKey;
+    protected final ObjectMapper objectMapper;
+    protected final HttpClient httpClient;
 
-    public LegiscanService(String apiKey, ObjectMapper objectMapper, LegiscanCache cache) {
+    public LegiscanService(String apiKey, ObjectMapper objectMapper) {
         this.apiKey = apiKey;
         this.objectMapper = objectMapper;
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(REQUEST_TIMEOUT)
                 .build();
-        this.cache = cache;
-    }
-
-    public LegiscanService(String apiKey, ObjectMapper objectMapper) {
-        this(apiKey, objectMapper, new NoOpLegiscanCache());
     }
     
     public LegiscanService(String apiKey) {
-        this(apiKey, new ObjectMapper(), new NoOpLegiscanCache());
+        this(apiKey, new ObjectMapper());
     }
 
-    private String buildUrl(String endpoint, String... params) {
+    protected String buildUrl(String endpoint, String... params) {
         StringBuilder url = new StringBuilder(BASE_URL)
                 .append("?key=").append(apiKey)
                 .append("&op=").append(endpoint);
@@ -81,7 +76,7 @@ public class LegiscanService {
         return url.toString();
     }
 
-    <T> T makeRequest(String url, TypeReference<T> typeRef) {
+    <T> T makeRequest(TypeReference<T> typeRef, String url) {
         try {
             LOGGER.fine("Making Legiscan API request to: " + url);
 
@@ -105,18 +100,6 @@ public class LegiscanService {
         }
     }
 
-    private <T> T getOrRequest(String cacheKey, TypeReference<T> typeRef, String url) {
-        return cache.get(cacheKey, typeRef).orElseGet(() -> {
-            T value = makeRequest(url, typeRef);
-            cache.put(cacheKey, value);
-            return value;
-        });
-    }
-
-    private static String cacheKeyFromUrl(String url) {
-        return "url:" + Integer.toHexString(url.hashCode());
-    }
-    
     /**
      * This operation returns a list of sessions that are available for access in the given state abbreviation, or all sessions if
 	 * no state is given
@@ -128,10 +111,8 @@ public class LegiscanService {
      */
     public List<LegiscanSessionView> getSessionList(String state) {
         String url = buildUrl("getSessionList", "state", state);
-        String cacheKey = cacheKeyFromUrl(url);
 
-        LegiscanResponse response = getOrRequest(
-                cacheKey,
+        LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
                 url
         );
@@ -148,10 +129,8 @@ public class LegiscanService {
      */
     public LegiscanMasterListView getMasterList(int sessionId) {
         String url = buildUrl("getMasterList", "id", String.valueOf(sessionId));
-        String cacheKey = cacheKeyFromUrl(url);
 
-        LegiscanResponse response = getOrRequest(
-                cacheKey,
+        LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
                 url
         );
@@ -168,10 +147,8 @@ public class LegiscanService {
      */
     public LegiscanMasterListView getMasterList(String stateCode) {
         String url = buildUrl("getMasterList", "state", stateCode);
-        String cacheKey = cacheKeyFromUrl(url);
 
-        LegiscanResponse response = getOrRequest(
-                cacheKey,
+        LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
                 url
         );
@@ -188,10 +165,8 @@ public class LegiscanService {
      */
     public LegiscanMasterListView getMasterListRaw(String stateCode) {
         String url = buildUrl("getMasterListRaw", "state", stateCode);
-        String cacheKey = cacheKeyFromUrl(url);
 
-        LegiscanResponse response = getOrRequest(
-                cacheKey,
+        LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
                 url
         );
@@ -208,10 +183,8 @@ public class LegiscanService {
      */
     public LegiscanMasterListView getMasterListRaw(int sessionId) {
         String url = buildUrl("getMasterListRaw", "id", String.valueOf(sessionId));
-        String cacheKey = cacheKeyFromUrl(url);
 
-        LegiscanResponse response = getOrRequest(
-                cacheKey,
+        LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
                 url
         );
@@ -228,10 +201,8 @@ public class LegiscanService {
      */
     public LegiscanBillView getBill(String billId) {
         String url = buildUrl("getBill", "id", billId);
-        String cacheKey = "getBill:" + billId;
 
-        LegiscanResponse response = getOrRequest(
-                cacheKey,
+        LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
                 url
         );
@@ -248,10 +219,8 @@ public class LegiscanService {
      */
     public LegiscanBillTextView getBillText(String docId) {
         String url = buildUrl("getBillText", "id", docId);
-        String cacheKey = cacheKeyFromUrl(url);
 
-        LegiscanResponse response = getOrRequest(
-                cacheKey,
+        LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
                 url
         );
@@ -269,10 +238,8 @@ public class LegiscanService {
      */
     public LegiscanAmendmentView getAmendment(String amendmentId) {
         String url = buildUrl("getAmendment", "id", amendmentId);
-        String cacheKey = cacheKeyFromUrl(url);
 
-        LegiscanResponse response = getOrRequest(
-                cacheKey,
+        LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
                 url
         );
@@ -290,10 +257,8 @@ public class LegiscanService {
      */
     public LegiscanSupplementView getSupplement(String supplementId) {
         String url = buildUrl("getSupplement", "id", supplementId);
-        String cacheKey = cacheKeyFromUrl(url);
 
-        LegiscanResponse response = getOrRequest(
-                cacheKey,
+        LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
                 url
         );
@@ -304,15 +269,15 @@ public class LegiscanService {
     /**
      * This operation returns a vote record detail with summary information and individual vote information.
      * 
+     * Refresh frequency: static
+     * 
      * @param rollCallId Retrieve vote detail information for roll_call_id as given by id
      * @return Roll call detail for individual votes for people_id and summary result information.
      */
     public LegiscanRollCallView getRollCall(String rollCallId) {
         String url = buildUrl("getRollCall", "id", rollCallId);
-        String cacheKey = cacheKeyFromUrl(url);
 
-        LegiscanResponse response = getOrRequest(
-                cacheKey,
+        LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
                 url
         );
@@ -324,15 +289,15 @@ public class LegiscanService {
      * 
      * Note person records reflect the current status, and if viewed in prior session context may have different role, district or party affiliation. The person_hash is a representation of the current record values, it can be stored for comparison to subsequent person records to detect when information has changed and needs updating.
      * 
+     * Refresh frequency: weekly
+     * 
      * @param peopleId Retrieve person information for people_id as given by id
      * @return Sponsor information including name information, party affiliation and role along with identifiers for third party data sources.
      */
     public LegiscanLegislatorView getPerson(String peopleId) {
         String url = buildUrl("getPerson", "id", peopleId);
-        String cacheKey = cacheKeyFromUrl(url);
 
-        LegiscanResponse response = getOrRequest(
-                cacheKey,
+        LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
                 url
         );
@@ -342,6 +307,8 @@ public class LegiscanService {
     
     /**
      * Performs a search against the national database using the LegiScan full text engine, returning a paginated result set, appropriate to drive an interactive search appliance.
+     * 
+     * Refresh frequency: 1 hour
      * 
      * Further Reading:
 	 * - https://legiscan.com/bill-numbers
@@ -355,11 +322,13 @@ public class LegiscanService {
      */
     public LegiscanSearchView getSearch(String state, String query, Integer year, Integer page) {
         String url = buildUrl("getSearch", "query", query, "state", state, "year", String.valueOf(year), "page", String.valueOf(page));
-        return makeRequest(url, new TypeReference<LegiscanResponse>() {}).getSearchresult();
+        return makeRequest(new TypeReference<LegiscanResponse>() {}, url).getSearchresult();
     }
     
     /**
      * Performs a search against the national database using the LegiScan full text engine, returning a paginated result set, appropriate to drive an interactive search appliance.
+     * 
+     * Refresh frequency: 1 hour
      * 
      * Further Reading:
 	 * - https://legiscan.com/bill-numbers
@@ -372,11 +341,13 @@ public class LegiscanService {
      */
     public LegiscanSearchView getSearch(int sessionId, String query, Integer page) {
         String url = buildUrl("getSearch", "query", query, "id", String.valueOf(sessionId), "year", "page", String.valueOf(page));
-        return makeRequest(url, new TypeReference<LegiscanResponse>() {}).getSearchresult();
+        return makeRequest(new TypeReference<LegiscanResponse>() {}, url).getSearchresult();
     }
     
     /**
      * Performs a search against the national database using the LegiScan full text engine, returning 2000 results at a time with simplified details, appropriate for automated keyword monitoring.
+     * 
+     * Refresh frequency: 1 hour
      * 
      * Further Reading:
 	 * - https://legiscan.com/bill-numbers
@@ -391,11 +362,13 @@ public class LegiscanService {
      */
     public LegiscanSearchView getSearchRaw(String state, String query, Integer year, Integer sessionId, Integer page) {
         String url = buildUrl("getSearchRaw", "query", query, "state", state, "year", String.valueOf(year), "id", String.valueOf(sessionId), "page", String.valueOf(page));
-        return makeRequest(url, new TypeReference<LegiscanResponse>() {}).getSearchresult();
+        return makeRequest(new TypeReference<LegiscanResponse>() {}, url).getSearchresult();
     }
     
     /**
      * Performs a search against the national database using the LegiScan full text engine, returning 2000 results at a time with simplified details, appropriate for automated keyword monitoring.
+     * 
+     * Refresh frequency: 1 hour
      * 
      * Further Reading:
 	 * - https://legiscan.com/bill-numbers
@@ -408,11 +381,13 @@ public class LegiscanService {
      */
     public LegiscanSearchView getSearchRaw(int sessionId, String query, Integer page) {
         String url = buildUrl("getSearchRaw", "query", query, "id", String.valueOf(sessionId), "year", "page", String.valueOf(page));
-        return makeRequest(url, new TypeReference<LegiscanResponse>() {}).getSearchresult();
+        return makeRequest(new TypeReference<LegiscanResponse>() {}, url).getSearchresult();
     }
     
     /**
      * This operation returns a list of available session datasets, with optional state and year filtering
+     * 
+     * Refresh frequency: weekly
      * 
      * @param state (Optional) Filter dataset results for a given state
      * @param year (Optional) Filter dataset results for a given year
@@ -420,10 +395,8 @@ public class LegiscanService {
      */
     public List<LegiscanDatasetView> getDatasetList(String state, Integer year) {
         String url = buildUrl("getDatasetList", "state", state, "year", String.valueOf(year));
-        String cacheKey = cacheKeyFromUrl(url);
 
-        LegiscanResponse response = getOrRequest(
-                cacheKey,
+        LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
                 url
         );
@@ -434,6 +407,8 @@ public class LegiscanService {
     /**
      * This operation returns a single ZIP archive for the requested dataset containing all bills, votes and people data for the specified session in individual JSON or CSV files. The ZIP is returned as an encoded JSON response.
      * 
+     * Refresh frequency: weekly
+     * 
      * @param sessionId Retrieve dataset archive information for session_id as given by id
      * @param accessKey Access key from getDatasetList for the session_id being requested
      * @param format (Optional) Data file format for ZIP file contents where json=JSON, csv=CSV [Default: json]
@@ -441,10 +416,8 @@ public class LegiscanService {
      */
     public LegiscanDatasetView getDataset(int sessionId, String accessKey, String format) {
         String url = buildUrl("getDataset", "id", String.valueOf(sessionId), "accessKey", accessKey, "format", format);
-        String cacheKey = cacheKeyFromUrl(url);
 
-        LegiscanResponse response = getOrRequest(
-                cacheKey,
+        LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
                 url
         );
@@ -459,7 +432,7 @@ public class LegiscanService {
      * The ZIP is returned as a raw binary stream. This is a lower-level alternative to getDataset,
      * suitable for cases where you want to handle decompression and decoding manually.
      * 
-     * Refresh frequency: static
+     * Refresh frequency: weekly
      * 
      * @param sessionId Retrieve dataset archive information for session_id as given by id
      * @param accessKey Access key from getDatasetList for the session_id being requested
@@ -468,6 +441,7 @@ public class LegiscanService {
      */
     public byte[] getDatasetRaw(int sessionId, String accessKey, String format) {
         String url = buildUrl("getDatasetRaw", "id", String.valueOf(sessionId), "access_key", accessKey, "format", format);
+        
         try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
@@ -492,40 +466,38 @@ public class LegiscanService {
      * This operation returns a list of legislator records active in a given session,
      * including people with either sponsor or vote activity.
      * 
-     * Refresh frequency: static
+     * Refresh frequency: weekly
      * 
      * @param sessionId Retrieve active people list for session_id as given by id
      * @return Legislator records with session metadata
      */
     public List<LegiscanLegislatorView> getSessionPeople(int sessionId) {
         String url = buildUrl("getSessionPeople", "id", String.valueOf(sessionId));
-        String cacheKey = cacheKeyFromUrl(url);
 
-        LegiscanResponse response = getOrRequest(
-                cacheKey,
-                new TypeReference<LegiscanResponse>() {},
+        LegiscanResponse response = makeRequest(
+        		new TypeReference<LegiscanResponse>() {},
                 url
         );
+        
         return response.getSessionpeople();
     }
 
     /**
      * This operation returns a list of bills sponsored by a specific legislator.
      * 
-     * Refresh frequency: static
+     * Refresh frequency: daily
      * 
      * @param peopleId Retrieve list of bills sponsored by people_id as given by id
      * @return Sponsored bills along with sponsor and session metadata
      */
     public List<LegiscanSponsoredBillView> getSponsoredList(int peopleId) {
         String url = buildUrl("getSponsoredList", "id", String.valueOf(peopleId));
-        String cacheKey = cacheKeyFromUrl(url);
 
-        LegiscanResponse response = getOrRequest(
-                cacheKey,
+        LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
                 url
         );
+        
         return response.getSponsoredbills();
     }
 
