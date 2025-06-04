@@ -7,7 +7,7 @@ import lombok.Data;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class LegiscanLegislatorView {
+public class LegiscanPeopleView {
     
     @JsonProperty("people_id")
     private Integer peopleId;

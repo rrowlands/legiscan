@@ -1,0 +1,502 @@
+package us.poliscore.legiscan.service;
+
+import java.io.File;
+import java.net.URI;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Logger;
+
+import org.apache.commons.lang3.tuple.Pair;
+
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import lombok.SneakyThrows;
+import net.lingala.zip4j.ZipFile;
+import us.poliscore.legiscan.PoliscoreLegiscanUtil;
+import us.poliscore.legiscan.cache.FileSystemLegiscanCache;
+import us.poliscore.legiscan.cache.LegiscanCache;
+import us.poliscore.legiscan.view.LegiscanAmendmentView;
+import us.poliscore.legiscan.view.LegiscanBillTextView;
+import us.poliscore.legiscan.view.LegiscanBillView;
+import us.poliscore.legiscan.view.LegiscanDatasetView;
+import us.poliscore.legiscan.view.LegiscanMasterListView;
+import us.poliscore.legiscan.view.LegiscanPeopleView;
+import us.poliscore.legiscan.view.LegiscanResponse;
+import us.poliscore.legiscan.view.LegiscanRollCallView;
+import us.poliscore.legiscan.view.LegiscanSessionView;
+import us.poliscore.legiscan.view.LegiscanSponsoredBillView;
+import us.poliscore.legiscan.view.LegiscanSupplementView;
+
+/**
+ * Implements a "Legiscan Client", as defined per the Legiscan documentation. Default configuration provides for the following additional services
+ * ontop of the standard Legiscan API
+ * - File system caching of responses
+ * - Bulk populating of datasets
+ * - Updating a previously bulk populated dataset and listening to data update events
+ */
+public class LegiscanClient extends LegiscanService {
+
+    private static final Logger LOGGER = Logger.getLogger(LegiscanClient.class.getName());
+
+    protected final LegiscanCache cache;
+    
+    /**
+     * The default TTL for non-static methods
+     */
+    protected int ttl = 14400; // 4 hours
+
+    protected LegiscanClient(String apiKey, ObjectMapper objectMapper, LegiscanCache cache) {
+        super(apiKey, objectMapper);
+        this.cache = cache;
+    }
+
+    public static Builder builder(String apiKey) {
+        return new Builder(apiKey);
+    }
+
+    public static class Builder {
+    	protected final String apiKey;
+    	protected ObjectMapper objectMapper;
+    	protected LegiscanCache cache;
+    	protected File cacheDirectory;
+    	protected int ttl;
+
+        public Builder(String apiKey) {
+            this.apiKey = apiKey;
+        }
+
+        public Builder withObjectMapper(ObjectMapper objectMapper) {
+            this.objectMapper = objectMapper;
+            return this;
+        }
+
+        public Builder withCache(LegiscanCache cache) {
+            this.cache = cache;
+            return this;
+        }
+
+        public Builder withCacheDirectory(File dir) {
+            this.cacheDirectory = dir;
+            return this;
+        }
+        
+        /**
+         * @param ttl Sets the time to live (in seconds) for non-static urls. Data will not be fetched more than the specified ttl. Default is 4 hours.
+         * @return
+         */
+        public Builder withTttl(int ttl) {
+        	this.ttl= ttl;
+        	return this;
+        }
+
+        public LegiscanClient build() {
+            if (this.objectMapper == null) {
+                this.objectMapper = new ObjectMapper();
+            }
+
+            if (this.cache == null) {
+                File dir = cacheDirectory != null
+                        ? cacheDirectory
+                        : new File(System.getProperty("user.home") + "/appdata/poliscore/legiscan");
+                
+                this.cache = new FileSystemLegiscanCache(dir, this.objectMapper);
+            }
+
+            var client = new LegiscanClient(apiKey, objectMapper, cache);
+            
+            if (ttl > 0)
+            	client.ttl = ttl;
+            
+            return client;
+        }
+    }
+    
+    protected long ttlForCacheKey(String cacheKey) {
+    	var op = cacheKey.split("/")[0];
+    	
+    	List<Pair<String, Integer>> ttlList = List.of(
+    	    Pair.of("getSessionList", ttl),
+    	    Pair.of("getMasterList", ttl),
+    	    Pair.of("getMasterListRaw", ttl),
+    	    Pair.of("getBill", ttl),
+    	    Pair.of("getBillText", 0),
+    	    Pair.of("getAmendment", 0),
+    	    Pair.of("getSupplement", 0),
+    	    Pair.of("getRollCall", 0),
+    	    Pair.of("getPerson", 0),
+    	    Pair.of("getDatasetList", ttl),
+    	    Pair.of("getDataset", ttl),
+    	    Pair.of("getDatasetRaw", ttl),
+    	    Pair.of("getSessionPeople", ttl),
+    	    Pair.of("getSponsoredList", ttl)
+    	);
+
+    	for (Pair<String, Integer> entry : ttlList) {
+            if (entry.getLeft().equals(op)) {
+                return entry.getRight();
+            }
+        }
+
+        return 0;
+    }
+
+    protected <T> T getOrRequest(String cacheKey, TypeReference<T> typeRef, String url) {
+        return cache.get(cacheKey, typeRef).orElseGet(() -> {
+            T value = makeRequest(typeRef, url);
+            cache.put(cacheKey, value, ttlForCacheKey(cacheKey));
+            return value;
+        });
+    }
+
+    protected String cacheKeyFromUrl(String url) {
+        try {
+            URI uri = new URI(url);
+            String query = uri.getRawQuery();
+
+            Map<String, String> paramMap = new HashMap<>();
+            for (String param : query.split("&")) {
+                String[] pair = param.split("=", 2);
+                if (pair.length == 2) {
+                    String key = URLDecoder.decode(pair[0], StandardCharsets.UTF_8);
+                    String value = URLDecoder.decode(pair[1], StandardCharsets.UTF_8);
+                    if (!"key".equals(key)) {
+                        paramMap.put(key, value);
+                    }
+                }
+            }
+
+            List<String> preferredOrder = List.of("op", "state", "year");
+            List<String> orderedParts = new ArrayList<>();
+
+            for (String key : preferredOrder) {
+                if (paramMap.containsKey(key)) {
+                    orderedParts.add(paramMap.remove(key));
+                }
+            }
+
+            // Append remaining parameters in natural (alphabetical) order
+            paramMap.entrySet().stream()
+                .sorted(Map.Entry.comparingByKey())
+                .forEach(entry -> orderedParts.add(entry.getValue()));
+
+            var out = String.join("/", orderedParts).toLowerCase();
+            
+            return out;
+        } catch (Exception e) {
+            throw new RuntimeException("Invalid URL: " + url, e);
+        }
+    }
+    
+    @SneakyThrows
+    public static void main(String[] args) {
+		var client = LegiscanClient.builder(args[0]).build();
+		
+//		var result = client.getDatasetList("US", 2024);
+		
+		client.cacheDataset("CO", 2025);
+		
+//		System.out.println(new ObjectMapper().writeValueAsString(result));
+	}
+    
+    /**
+     * Fetches the dataset for the provided state and year and caches it for later retrieval.
+     * 
+     * @param session
+     */
+    @SneakyThrows
+    public void cacheDataset(String state, int year)
+    {
+        List<LegiscanDatasetView> datasets = this.getDatasetList(state, year);
+        
+        for (var dataset : datasets)
+        {
+        	long people = 0;
+            long bills = 0;
+            long votes = 0;
+        	
+            byte[] zipBytes = this.getDatasetRaw(dataset.getSessionId(), dataset.getAccessKey(), "json");
+
+            // Write zipBytes to a temporary file
+            Path tempZip = Files.createTempFile("dataset-", ".zip");
+            
+            try
+            {
+	            Files.write(tempZip, zipBytes);
+	
+	            // Use ZipFile from zip4j to extract
+	            try (ZipFile zipFile = new ZipFile(tempZip.toFile())) {
+	                File extractToDir = new File(PoliscoreLegiscanUtil.getDeployedPath(), "cache/" + state + "/" + year + "/" + dataset.getSessionId());
+	                zipFile.extractAll(extractToDir.getAbsolutePath());
+	                
+	                File fPeopleParent = PoliscoreLegiscanUtil.childWithName(extractToDir, "people");
+	                File fBillParent = PoliscoreLegiscanUtil.childWithName(extractToDir, "bill");
+	                File fVoteParent = PoliscoreLegiscanUtil.childWithName(extractToDir, "vote");
+	                
+	                for(File file : PoliscoreLegiscanUtil.allFilesWhere(fPeopleParent, f -> f.getName().toLowerCase().endsWith(".json")))
+	                {
+	                	var person = objectMapper.readValue(file, LegiscanPeopleView.class);
+	                	
+	                	String url = buildUrl("getPerson", "id", String.valueOf(person.getPeopleId()));
+	                    String cacheKey = cacheKeyFromUrl(url);
+	                	
+	                	cache.put(cacheKey, person);
+	                	people++;
+	                }
+	                
+	                for(File file : PoliscoreLegiscanUtil.allFilesWhere(fBillParent, f -> f.getName().toLowerCase().endsWith(".json")))
+	                {
+	                	var bill = objectMapper.readValue(file, LegiscanBillView.class);
+	                	
+	                	String url = buildUrl("getBill", "id", bill.getBillId());
+	                    String cacheKey = cacheKeyFromUrl(url);
+	                	
+	                	cache.put(cacheKey, bill);
+	                	bills++;
+	                }
+	                
+	                for(File file : PoliscoreLegiscanUtil.allFilesWhere(fVoteParent, f -> f.getName().toLowerCase().endsWith(".json")))
+	                {
+	                	var rollCall = objectMapper.readValue(file, LegiscanRollCallView.class);
+	                	
+	                	String url = buildUrl("getRollCall", "id", String.valueOf(rollCall.getRollCallId()));
+	                    String cacheKey = cacheKeyFromUrl(url);
+	                	
+	                	cache.put(cacheKey, rollCall);
+	                	votes++;
+	                }
+	            }
+            }
+            catch (Throwable t)
+            {
+            	Files.deleteIfExists(tempZip);
+            }
+            
+            LOGGER.info("Successfully loaded [" + state + ", " + dataset.getYearEnd() + ", " + dataset.getSessionId() + "] into cache [" + cache.toString() + "]. Dataset contained " + people + " people, " + bills + " bills, and " + votes + " votes.");
+        }
+    }
+
+    @Override
+    public List<LegiscanSessionView> getSessionList(String state) {
+        String url = buildUrl("getSessionList", "state", state);
+        String cacheKey = cacheKeyFromUrl(url);
+
+        LegiscanResponse response = getOrRequest(
+                cacheKey,
+                new TypeReference<LegiscanResponse>() {},
+                url
+        );
+        return response.getSessions();
+    }
+    
+    @Override
+    public LegiscanMasterListView getMasterList(int sessionId) {
+        String url = buildUrl("getMasterList", "id", String.valueOf(sessionId));
+        String cacheKey = cacheKeyFromUrl(url);
+
+        LegiscanResponse response = getOrRequest(
+                cacheKey,
+                new TypeReference<LegiscanResponse>() {},
+                url
+        );
+        return response.getMasterlist();
+    }
+    
+    @Override
+    public LegiscanMasterListView getMasterList(String stateCode) {
+        String url = buildUrl("getMasterList", "state", stateCode);
+        String cacheKey = cacheKeyFromUrl(url);
+
+        LegiscanResponse response = getOrRequest(
+                cacheKey,
+                new TypeReference<LegiscanResponse>() {},
+                url
+        );
+        return response.getMasterlist();
+    }
+    
+    @Override
+    public LegiscanMasterListView getMasterListRaw(String stateCode) {
+        String url = buildUrl("getMasterListRaw", "state", stateCode);
+        String cacheKey = cacheKeyFromUrl(url);
+
+        LegiscanResponse response = getOrRequest(
+                cacheKey,
+                new TypeReference<LegiscanResponse>() {},
+                url
+        );
+        return response.getMasterlist();
+    }
+    
+    @Override
+    public LegiscanMasterListView getMasterListRaw(int sessionId) {
+        String url = buildUrl("getMasterListRaw", "id", String.valueOf(sessionId));
+        String cacheKey = cacheKeyFromUrl(url);
+
+        LegiscanResponse response = getOrRequest(
+                cacheKey,
+                new TypeReference<LegiscanResponse>() {},
+                url
+        );
+        return response.getMasterlist();
+    }
+
+    @Override
+    public LegiscanBillView getBill(String billId) {
+        String url = buildUrl("getBill", "id", billId);
+        String cacheKey = cacheKeyFromUrl(url);
+
+        LegiscanResponse response = getOrRequest(
+                cacheKey,
+                new TypeReference<LegiscanResponse>() {},
+                url
+        );
+        return response.getBill();
+    }
+    
+    @Override
+    public LegiscanBillTextView getBillText(String docId) {
+        String url = buildUrl("getBillText", "id", docId);
+        String cacheKey = cacheKeyFromUrl(url);
+
+        LegiscanResponse response = getOrRequest(
+                cacheKey,
+                new TypeReference<LegiscanResponse>() {},
+                url
+        );
+        
+        return response.getText();
+    }
+    
+    @Override
+    public LegiscanAmendmentView getAmendment(String amendmentId) {
+        String url = buildUrl("getAmendment", "id", amendmentId);
+        String cacheKey = cacheKeyFromUrl(url);
+
+        LegiscanResponse response = getOrRequest(
+                cacheKey,
+                new TypeReference<LegiscanResponse>() {},
+                url
+        );
+        
+        return response.getAmendment();
+    }
+    
+    @Override
+    public LegiscanSupplementView getSupplement(String supplementId) {
+        String url = buildUrl("getSupplement", "id", supplementId);
+        String cacheKey = cacheKeyFromUrl(url);
+
+        LegiscanResponse response = getOrRequest(
+                cacheKey,
+                new TypeReference<LegiscanResponse>() {},
+                url
+        );
+        
+        return response.getSupplement();
+    }
+    
+    @Override
+    public LegiscanRollCallView getRollCall(String rollCallId) {
+        String url = buildUrl("getRollCall", "id", rollCallId);
+        String cacheKey = cacheKeyFromUrl(url);
+
+        LegiscanResponse response = getOrRequest(
+                cacheKey,
+                new TypeReference<LegiscanResponse>() {},
+                url
+        );
+        return response.getRollcall();
+    }
+    
+    @Override
+    public LegiscanPeopleView getPerson(String peopleId) {
+        String url = buildUrl("getPerson", "id", peopleId);
+        String cacheKey = cacheKeyFromUrl(url);
+
+        LegiscanResponse response = getOrRequest(
+                cacheKey,
+                new TypeReference<LegiscanResponse>() {},
+                url
+        );
+        
+        return response.getPerson();
+    }
+    
+    @Override
+    public List<LegiscanDatasetView> getDatasetList(String state, Integer year) {
+        String url = buildUrl("getDatasetList", "state", state, "year", String.valueOf(year));
+        String cacheKey = cacheKeyFromUrl(url);
+
+        LegiscanResponse response = getOrRequest(
+                cacheKey,
+                new TypeReference<LegiscanResponse>() {},
+                url
+        );
+        
+        return response.getDatasetlist();
+    }
+    
+    @Override
+    public LegiscanDatasetView getDataset(int sessionId, String accessKey, String format) {
+        String url = buildUrl("getDataset", "id", String.valueOf(sessionId), "accessKey", accessKey, "format", format);
+        String cacheKey = cacheKeyFromUrl(url);
+
+        LegiscanResponse response = getOrRequest(
+                cacheKey,
+                new TypeReference<LegiscanResponse>() {},
+                url
+        );
+        
+        return response.getDataset();
+    }
+    
+    @Override
+    public byte[] getDatasetRaw(int sessionId, String accessKey, String format) {
+        String url = buildUrl("getDatasetRaw", "id", String.valueOf(sessionId), "access_key", accessKey, "format", format);
+        String cacheKey = cacheKeyFromUrl(url);
+        
+        var typeRef = new TypeReference<byte[]>(){};
+        
+        return cache.get(cacheKey, typeRef).orElseGet(() -> {
+            byte[] value = makeRequestRaw(url);
+            cache.put(cacheKey, value, ttlForCacheKey(cacheKey));
+            return value;
+        });
+    }
+
+    @Override
+    public List<LegiscanPeopleView> getSessionPeople(int sessionId) {
+        String url = buildUrl("getSessionPeople", "id", String.valueOf(sessionId));
+        String cacheKey = cacheKeyFromUrl(url);
+
+        LegiscanResponse response = getOrRequest(
+                cacheKey,
+                new TypeReference<LegiscanResponse>() {},
+                url
+        );
+        
+        return response.getSessionpeople();
+    }
+
+    @Override
+    public List<LegiscanSponsoredBillView> getSponsoredList(int peopleId) {
+        String url = buildUrl("getSponsoredList", "id", String.valueOf(peopleId));
+        String cacheKey = cacheKeyFromUrl(url);
+
+        LegiscanResponse response = getOrRequest(
+                cacheKey,
+                new TypeReference<LegiscanResponse>() {},
+                url
+        );
+        
+        return response.getSponsoredbills();
+    }
+
+}

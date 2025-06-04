@@ -22,7 +22,7 @@ public class LegiscanResponse {
     private LegiscanBillView bill;
     
     @JsonProperty("person")
-    private LegiscanLegislatorView person;
+    private LegiscanPeopleView person;
     
     @JsonProperty("rollcall")
     private LegiscanRollCallView rollcall;
@@ -31,7 +31,7 @@ public class LegiscanResponse {
     private List<LegiscanBillView> bills;
     
     @JsonProperty("people")
-    private List<LegiscanLegislatorView> people;
+    private List<LegiscanPeopleView> people;
     
     @JsonProperty("rollcalls")
     private List<LegiscanRollCallView> rollcalls;
@@ -55,7 +55,7 @@ public class LegiscanResponse {
     
     private LegiscanDatasetView dataset;
     
-    private List<LegiscanLegislatorView> sessionpeople;
+    private List<LegiscanPeopleView> sessionpeople;
     
     private LegiscanMasterListView monitorlist;
     

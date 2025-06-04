@@ -13,4 +13,14 @@ public class NoOpLegiscanCache implements LegiscanCache {
     public void put(String key, Object value) {
         // no-op
     }
+
+	@Override
+	public void put(String key, Object value, long ttlSecs) {
+		// no-op
+	}
+	
+	@Override
+	public String toString() {
+		return "NO OP Cache";
+	}
 }

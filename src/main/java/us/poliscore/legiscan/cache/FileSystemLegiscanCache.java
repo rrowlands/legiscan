@@ -20,12 +20,12 @@ public class FileSystemLegiscanCache implements LegiscanCache {
 
     private final File baseDir;
     private final ObjectMapper objectMapper;
-    private final long defaultTtlMillis; // If > 0, applies to all entries unless overridden
+    private final long defaultTtlSecs; // If > 0, applies to all entries unless overridden
 
-    public FileSystemLegiscanCache(File baseDir, ObjectMapper objectMapper, long defaultTtlMillis) {
+    public FileSystemLegiscanCache(File baseDir, ObjectMapper objectMapper, long defaultTtlSecs) {
         this.baseDir = baseDir;
         this.objectMapper = objectMapper;
-        this.defaultTtlMillis = defaultTtlMillis;
+        this.defaultTtlSecs = defaultTtlSecs;
 
         if (!baseDir.exists() && !baseDir.mkdirs()) {
             throw new IllegalStateException("Could not create cache directory: " + baseDir);
@@ -37,8 +37,8 @@ public class FileSystemLegiscanCache implements LegiscanCache {
     }
 
     private File resolvePath(String key) {
-        String safeName = key.replaceAll("[^a-zA-Z0-9\\-_]", "_");
-        return new File(baseDir, safeName + ".json");
+        String filename = key.replaceAll("[^/a-zA-Z0-9\\-_]", "_") + "/cached.json";
+        return new File(baseDir, filename);
     }
 
     @Override
@@ -53,7 +53,7 @@ public class FileSystemLegiscanCache implements LegiscanCache {
             CachedEntry entry = objectMapper.readValue(data, CachedEntry.class);
 
             long now = Instant.now().toEpochMilli();
-            if (entry.getTtlMillis() > 0 && now > entry.getTimestamp() + entry.getTtlMillis()) {
+            if (entry.getTtlSecs() > 0 && now > entry.getTimestamp() + entry.getTtlSecs()) {
                 LOGGER.fine("Cache expired for key: " + key);
                 file.delete(); // Clean up expired file
                 return Optional.empty();
@@ -70,18 +70,24 @@ public class FileSystemLegiscanCache implements LegiscanCache {
 
     @Override
     public void put(String key, Object value) {
-        put(key, value, defaultTtlMillis);
+        put(key, value, defaultTtlSecs);
     }
 
-    public void put(String key, Object value, long ttlMillis) {
+    public void put(String key, Object value, long ttlSecs) {
         File file = resolvePath(key);
+        file.getParentFile().mkdirs();
         try {
-            CachedEntry entry = new CachedEntry(value, Instant.now().toEpochMilli(), ttlMillis);
+            CachedEntry entry = new CachedEntry(value, Instant.now().getEpochSecond(), ttlSecs);
             objectMapper.writerWithDefaultPrettyPrinter().writeValue(file, entry);
         } catch (IOException e) {
             LOGGER.log(Level.WARNING, "Failed to write cache for key: " + key, e);
         }
     }
+    
+    @Override
+	public String toString() {
+		return "File System Cache (" + baseDir.getAbsolutePath() + "]";
+	}
 
     @Data
     @NoArgsConstructor
@@ -89,6 +95,6 @@ public class FileSystemLegiscanCache implements LegiscanCache {
     public static class CachedEntry {
         private Object value;
         private long timestamp;
-        private long ttlMillis;
+        private long ttlSecs;
     }
 }

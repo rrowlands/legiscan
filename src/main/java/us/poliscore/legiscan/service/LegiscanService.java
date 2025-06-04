@@ -22,7 +22,7 @@ import us.poliscore.legiscan.view.LegiscanAmendmentView;
 import us.poliscore.legiscan.view.LegiscanBillTextView;
 import us.poliscore.legiscan.view.LegiscanBillView;
 import us.poliscore.legiscan.view.LegiscanDatasetView;
-import us.poliscore.legiscan.view.LegiscanLegislatorView;
+import us.poliscore.legiscan.view.LegiscanPeopleView;
 import us.poliscore.legiscan.view.LegiscanMasterListView;
 import us.poliscore.legiscan.view.LegiscanResponse;
 import us.poliscore.legiscan.view.LegiscanRollCallView;
@@ -32,7 +32,7 @@ import us.poliscore.legiscan.view.LegiscanSponsoredBillView;
 import us.poliscore.legiscan.view.LegiscanSupplementView;
 
 /**
- * The primary entrypoint for communication with the remote Legiscan API.
+ * Implements a basic communication bridge between the Legiscan API, adhering somewhat strictly to the Legiscan API documentation.
  * 
  * Update workflow: The typical workflow for maintaining session data begins with Bulk loading the appropriate datasets, then periodically using getMasterListRaw to compare current change_hash with stored value for each bill and using getBill to retrieve and update those bills that have changed. See the LegiScan API Client worker daemon for this and other synchronization strategies.
  * 
@@ -67,7 +67,7 @@ public class LegiscanService {
                 .append("&op=").append(endpoint);
 
         for (int i = 0; i < params.length; i += 2) {
-            if (i + 1 < params.length) {
+            if (i + 1 < params.length && params[i] != null && params[i+1] != null) {
                 url.append("&").append(params[i]).append("=")
                         .append(URLEncoder.encode(params[i + 1], StandardCharsets.UTF_8));
             }
@@ -76,29 +76,39 @@ public class LegiscanService {
         return url.toString();
     }
 
-    <T> T makeRequest(TypeReference<T> typeRef, String url) {
+    public <T> T makeRequest(TypeReference<T> typeRef, String url) {
         try {
             LOGGER.fine("Making Legiscan API request to: " + url);
+            byte[] responseBytes = makeRequestRaw(url);
+            return objectMapper.readValue(responseBytes, typeRef);
+        } catch (Exception e) {
+            LOGGER.log(Level.SEVERE, "Error during Legiscan API call to: " + url, e);
+            throw new LegiscanException("Failed to call Legiscan API: " + url, e);
+        }
+    }
 
+    public byte[] makeRequestRaw(String url) {
+        try {
             HttpRequest request = HttpRequest.newBuilder()
                     .uri(URI.create(url))
                     .timeout(REQUEST_TIMEOUT)
                     .GET()
                     .build();
 
-            HttpResponse<String> response = httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+            HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
 
             if (response.statusCode() == 200) {
-                return objectMapper.readValue(response.body(), typeRef);
+                return response.body();
             } else {
-                throw new LegiscanException("HTTP " + response.statusCode() + ": " + response.body());
+                throw new LegiscanException("HTTP " + response.statusCode() + ": " + new String(response.body()));
             }
 
         } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error during Legiscan API call to: " + url, e);
-            throw new LegiscanException("Failed to call Legiscan API: " + url, e);
+            LOGGER.log(Level.SEVERE, "Error during raw Legiscan API call to: " + url, e);
+            throw new LegiscanException("Failed to call Legiscan API (raw): " + url, e);
         }
     }
+
 
     /**
      * This operation returns a list of sessions that are available for access in the given state abbreviation, or all sessions if
@@ -294,7 +304,7 @@ public class LegiscanService {
      * @param peopleId Retrieve person information for people_id as given by id
      * @return Sponsor information including name information, party affiliation and role along with identifiers for third party data sources.
      */
-    public LegiscanLegislatorView getPerson(String peopleId) {
+    public LegiscanPeopleView getPerson(String peopleId) {
         String url = buildUrl("getPerson", "id", peopleId);
 
         LegiscanResponse response = makeRequest(
@@ -442,24 +452,7 @@ public class LegiscanService {
     public byte[] getDatasetRaw(int sessionId, String accessKey, String format) {
         String url = buildUrl("getDatasetRaw", "id", String.valueOf(sessionId), "access_key", accessKey, "format", format);
         
-        try {
-            HttpRequest request = HttpRequest.newBuilder()
-                    .uri(URI.create(url))
-                    .timeout(REQUEST_TIMEOUT)
-                    .GET()
-                    .build();
-
-            HttpResponse<byte[]> response = httpClient.send(request, HttpResponse.BodyHandlers.ofByteArray());
-
-            if (response.statusCode() == 200) {
-                return response.body();
-            } else {
-                throw new LegiscanException("HTTP " + response.statusCode() + ": Failed to fetch raw dataset");
-            }
-        } catch (Exception e) {
-            LOGGER.log(Level.SEVERE, "Error during getDatasetRaw API call: " + url, e);
-            throw new LegiscanException("Failed to fetch raw dataset", e);
-        }
+        return makeRequestRaw(url);
     }
 
     /**
@@ -471,7 +464,7 @@ public class LegiscanService {
      * @param sessionId Retrieve active people list for session_id as given by id
      * @return Legislator records with session metadata
      */
-    public List<LegiscanLegislatorView> getSessionPeople(int sessionId) {
+    public List<LegiscanPeopleView> getSessionPeople(int sessionId) {
         String url = buildUrl("getSessionPeople", "id", String.valueOf(sessionId));
 
         LegiscanResponse response = makeRequest(

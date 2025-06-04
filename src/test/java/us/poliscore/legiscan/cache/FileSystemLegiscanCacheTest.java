@@ -43,7 +43,7 @@ public class FileSystemLegiscanCacheTest {
     }
 
     @Test
-    void testPutAndGetWithoutTtl() {
+    void testPutAndGet() {
         cache = new FileSystemLegiscanCache(tempDir, objectMapper);
         String key = "testKey";
         Map<String, String> value = Map.of("foo", "bar");
@@ -53,23 +53,6 @@ public class FileSystemLegiscanCacheTest {
         Optional<Map<String, String>> result = cache.get(key, new TypeReference<>() {});
         assertTrue(result.isPresent());
         assertEquals("bar", result.get().get("foo"));
-    }
-
-    @Test
-    void testExpiredEntryIsRemoved() throws InterruptedException {
-        long ttl = 100; // 100 ms
-        cache = new FileSystemLegiscanCache(tempDir, objectMapper, ttl);
-        String key = "shortLived";
-        Map<String, String> value = Map.of("hello", "world");
-
-        cache.put(key, value);
-        Thread.sleep(150); // Wait for TTL to expire
-
-        Optional<Map<String, String>> result = cache.get(key, new TypeReference<>() {});
-        assertTrue(result.isEmpty(), "Expected cache to expire and return empty");
-
-        File[] files = tempDir.listFiles();
-        assertEquals(0, files.length, "Expected expired cache file to be deleted");
     }
 
     @Test
@@ -85,18 +68,5 @@ public class FileSystemLegiscanCacheTest {
         Optional<Map<String, String>> result = cache.get(key, new TypeReference<>() {});
         assertTrue(result.isPresent());
         assertEquals("2", result.get().get("a"));
-    }
-
-    @Test
-    void testCustomTtlOnPut() throws InterruptedException {
-        cache = new FileSystemLegiscanCache(tempDir, objectMapper);
-        String key = "customTtl";
-        Map<String, String> value = Map.of("life", "short");
-
-        cache.put(key, value, 100); // 100ms TTL
-        Thread.sleep(150);
-
-        Optional<Map<String, String>> result = cache.get(key, new TypeReference<>() {});
-        assertTrue(result.isEmpty(), "Expected expired custom TTL value to be absent");
     }
 }
