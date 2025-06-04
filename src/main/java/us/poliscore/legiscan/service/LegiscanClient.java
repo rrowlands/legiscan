@@ -200,7 +200,7 @@ public class LegiscanClient extends LegiscanService {
 		
 //		var result = client.getDatasetList("US", 2024);
 		
-		client.cacheDataset("CO", 2025);
+		client.cacheDataset("US", 2025);
 		
 //		System.out.println(new ObjectMapper().writeValueAsString(result));
 	}
@@ -241,34 +241,37 @@ public class LegiscanClient extends LegiscanService {
 	                
 	                for(File file : PoliscoreLegiscanUtil.allFilesWhere(fPeopleParent, f -> f.getName().toLowerCase().endsWith(".json")))
 	                {
-	                	var person = objectMapper.readValue(file, LegiscanPeopleView.class);
+	                	var resp = objectMapper.readValue(file, LegiscanResponse.class);
+	                	var person = resp.getPerson();
 	                	
 	                	String url = buildUrl("getPerson", "id", String.valueOf(person.getPeopleId()));
 	                    String cacheKey = cacheKeyFromUrl(url);
 	                	
-	                	cache.put(cacheKey, person);
+	                	cache.put(cacheKey, resp);
 	                	people++;
 	                }
 	                
 	                for(File file : PoliscoreLegiscanUtil.allFilesWhere(fBillParent, f -> f.getName().toLowerCase().endsWith(".json")))
 	                {
-	                	var bill = objectMapper.readValue(file, LegiscanBillView.class);
+	                	var resp = objectMapper.readValue(file, LegiscanResponse.class);
+	                	var bill = resp.getBill();
 	                	
 	                	String url = buildUrl("getBill", "id", bill.getBillId());
 	                    String cacheKey = cacheKeyFromUrl(url);
 	                	
-	                	cache.put(cacheKey, bill);
+	                	cache.put(cacheKey, resp);
 	                	bills++;
 	                }
 	                
 	                for(File file : PoliscoreLegiscanUtil.allFilesWhere(fVoteParent, f -> f.getName().toLowerCase().endsWith(".json")))
 	                {
-	                	var rollCall = objectMapper.readValue(file, LegiscanRollCallView.class);
+	                	var resp = objectMapper.readValue(file, LegiscanResponse.class);
+	                	var rollCall = resp.getRollcall();
 	                	
 	                	String url = buildUrl("getRollCall", "id", String.valueOf(rollCall.getRollCallId()));
 	                    String cacheKey = cacheKeyFromUrl(url);
 	                	
-	                	cache.put(cacheKey, rollCall);
+	                	cache.put(cacheKey, resp);
 	                	votes++;
 	                }
 	            }
