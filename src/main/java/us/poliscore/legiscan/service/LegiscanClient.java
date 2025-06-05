@@ -185,10 +185,10 @@ public class LegiscanClient extends LegiscanService {
     }
     
     public static boolean isUrlStatic(String cacheKey) {
-    	var op = cacheKey.split("/")[0];
+    	var op = cacheKey.split("/")[0].toLowerCase();
     	
     	return ArrayUtils.contains(new String[] { 
-    			"getBillText", "getAmendment", "getSupplement", "getRollCall"
+    			"getbilltext", "getamendment", "getsupplement", "getrollcall"
     	}, op);
     }
     
