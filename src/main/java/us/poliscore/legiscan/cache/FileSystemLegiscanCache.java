@@ -5,15 +5,19 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import us.poliscore.legiscan.service.LegiscanClient;
 import us.poliscore.legiscan.view.LegiscanResponse;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.time.Instant;
+import java.util.List;
 import java.util.Optional;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import org.apache.commons.lang3.tuple.Pair;
 
 public class FileSystemLegiscanCache implements LegiscanCache {
 
@@ -21,9 +25,9 @@ public class FileSystemLegiscanCache implements LegiscanCache {
 
     private final File baseDir;
     private final ObjectMapper objectMapper;
-    private final long defaultTtlSecs; // If > 0, applies to all entries unless overridden
+    private final int defaultTtlSecs; // If > 0, applies to non-static entries unless overridden
 
-    public FileSystemLegiscanCache(File baseDir, ObjectMapper objectMapper, long defaultTtlSecs) {
+    public FileSystemLegiscanCache(File baseDir, ObjectMapper objectMapper, int defaultTtlSecs) {
         this.baseDir = baseDir;
         this.objectMapper = objectMapper;
         this.defaultTtlSecs = defaultTtlSecs;
@@ -76,7 +80,7 @@ public class FileSystemLegiscanCache implements LegiscanCache {
 
     @Override
     public void put(String key, Object value) {
-        put(key, value, defaultTtlSecs);
+        put(key, value, ttlForCacheKey(key));
     }
 
     public void put(String key, Object value, long ttlSecs) {
@@ -114,6 +118,10 @@ public class FileSystemLegiscanCache implements LegiscanCache {
     	
     	return file.exists();
 	}
+    
+    protected long ttlForCacheKey(String cacheKey) {
+    	return LegiscanClient.isUrlStatic(cacheKey) ? 0 : defaultTtlSecs;
+    }
     
     @Data
     @NoArgsConstructor

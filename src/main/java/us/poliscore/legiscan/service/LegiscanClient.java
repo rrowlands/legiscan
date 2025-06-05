@@ -12,12 +12,11 @@ import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
 
-import org.apache.commons.lang3.tuple.Pair;
+import org.apache.commons.lang3.ArrayUtils;
 
 import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 
 import lombok.SneakyThrows;
 import net.lingala.zip4j.ZipFile;
@@ -49,11 +48,6 @@ public class LegiscanClient extends LegiscanService {
     private static final Logger LOGGER = Logger.getLogger(LegiscanClient.class.getName());
 
     protected final LegiscanCache cache;
-    
-    /**
-     * The default TTL for non-static methods
-     */
-    protected int ttl = 14400; // 4 hours
 
     protected LegiscanClient(String apiKey, ObjectMapper objectMapper, LegiscanCache cache) {
         super(apiKey, objectMapper);
@@ -69,7 +63,7 @@ public class LegiscanClient extends LegiscanService {
     	protected ObjectMapper objectMapper;
     	protected LegiscanCache cache;
     	protected File cacheDirectory;
-    	protected int ttl;
+    	protected int ttl = 14400; // Default ttl is 4 hours
 
         public Builder(String apiKey) {
             this.apiKey = apiKey;
@@ -91,10 +85,10 @@ public class LegiscanClient extends LegiscanService {
         }
         
         /**
-         * @param ttl Sets the time to live (in seconds) for non-static urls. Data will not be fetched more than the specified ttl. Default is 4 hours.
+         * @param ttl Sets the time to live (in seconds) for non-static urls. Data will not be fetched more than the specified ttl. Default is 4 hours. Static objects will never be re-fetched.
          * @return
          */
-        public Builder withTttl(int ttl) {
+        public Builder withCacheTttl(int ttl) {
         	this.ttl= ttl;
         	return this;
         }
@@ -112,13 +106,11 @@ public class LegiscanClient extends LegiscanService {
                         ? cacheDirectory
                         : new File(System.getProperty("user.home") + "/appdata/poliscore/legiscan");
                 
-                this.cache = new FileSystemLegiscanCache(dir, this.objectMapper);
+                // default ttl is 4 hours
+                this.cache = new FileSystemLegiscanCache(dir, this.objectMapper, ttl);
             }
 
             var client = new LegiscanClient(apiKey, objectMapper, cache);
-            
-            if (ttl > 0)
-            	client.ttl = ttl;
             
             return client;
         }
@@ -140,35 +132,6 @@ public class LegiscanClient extends LegiscanService {
         }
 	}
     
-    protected long ttlForCacheKey(String cacheKey) {
-    	var op = cacheKey.split("/")[0];
-    	
-    	List<Pair<String, Integer>> ttlList = List.of(
-    	    Pair.of("getSessionList", ttl),
-    	    Pair.of("getMasterList", ttl),
-    	    Pair.of("getMasterListRaw", ttl),
-    	    Pair.of("getBill", ttl),
-    	    Pair.of("getBillText", 0),
-    	    Pair.of("getAmendment", 0),
-    	    Pair.of("getSupplement", 0),
-    	    Pair.of("getRollCall", 0),
-    	    Pair.of("getPerson", 0),
-    	    Pair.of("getDatasetList", ttl),
-    	    Pair.of("getDataset", ttl),
-    	    Pair.of("getDatasetRaw", ttl),
-    	    Pair.of("getSessionPeople", ttl),
-    	    Pair.of("getSponsoredList", ttl)
-    	);
-
-    	for (Pair<String, Integer> entry : ttlList) {
-            if (entry.getLeft().equals(op)) {
-                return entry.getRight();
-            }
-        }
-
-        return 0;
-    }
-
     protected LegiscanResponse getOrRequest(String cacheKey, String url) {
     	if (cache.containsKey(cacheKey)) {
     		LOGGER.fine("Pulling object [" + cacheKey + "] from cache.");
@@ -177,7 +140,7 @@ public class LegiscanClient extends LegiscanService {
         return cache.get(cacheKey).orElseGet(() -> {
         	LOGGER.info("Fetching object [" + cacheKey + "] from Legiscan.");
             LegiscanResponse value = makeRequest(url);
-            cache.put(cacheKey, value, ttlForCacheKey(cacheKey));
+            cache.put(cacheKey, value);
             return value;
         });
     }
@@ -219,6 +182,14 @@ public class LegiscanClient extends LegiscanService {
         } catch (Exception e) {
             throw new RuntimeException("Invalid URL: " + url, e);
         }
+    }
+    
+    public static boolean isUrlStatic(String cacheKey) {
+    	var op = cacheKey.split("/")[0];
+    	
+    	return ArrayUtils.contains(new String[] { 
+    			"getBillText", "getAmendment", "getSupplement", "getRollCall"
+    	}, op);
     }
     
     /**
@@ -513,7 +484,7 @@ public class LegiscanClient extends LegiscanService {
         
         return cache.get(cacheKey, typeRef).orElseGet(() -> {
             byte[] value = makeRequestRaw(url);
-            cache.put(cacheKey, value, ttlForCacheKey(cacheKey));
+            cache.put(cacheKey, value);
             return value;
         });
     }
