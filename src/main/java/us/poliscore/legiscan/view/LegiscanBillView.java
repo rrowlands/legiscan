@@ -1,21 +1,29 @@
 
 package us.poliscore.legiscan.view;
 
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
 
-import java.util.List;
+import lombok.Data;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class LegiscanBillView {
     
+	public static String getCacheKey(Integer billId) {
+		return "getbill/" + billId;
+	}
+	
     @JsonProperty("bill_id")
     private String billId;
     
     @JsonProperty("bill_number")
     private String billNumber;
+    
+    @JsonProperty("change_hash")
+    private String changeHash;
     
     @JsonProperty("bill_type")
     private String billType;
@@ -83,8 +91,14 @@ public class LegiscanBillView {
     @JsonProperty("pending_committee_id")
     private Integer pendingCommitteeId;
     
+    // TODO
+    // Two different bills serialize this object completely differently.
+    // This bill serializes it as an object:
+    // https://api.legiscan.com/?key=123&op=getBill&id=1984092
+    // And this bill serializes it as a list:
+    // https://api.legiscan.com/?key=123&op=getBill&id=2014864
     @JsonProperty("committee")
-    private LegiscanCommitteeView committee;
+    private List<LegiscanCommitteeView> committee;
     
     @JsonProperty("referral_date")
     private String referralDate;

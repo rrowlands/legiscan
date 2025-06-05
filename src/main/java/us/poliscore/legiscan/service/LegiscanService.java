@@ -8,22 +8,19 @@ import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
-import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import us.poliscore.legiscan.cache.LegiscanCache;
-import us.poliscore.legiscan.cache.NoOpLegiscanCache;
 import us.poliscore.legiscan.exception.LegiscanException;
 import us.poliscore.legiscan.view.LegiscanAmendmentView;
 import us.poliscore.legiscan.view.LegiscanBillTextView;
 import us.poliscore.legiscan.view.LegiscanBillView;
 import us.poliscore.legiscan.view.LegiscanDatasetView;
-import us.poliscore.legiscan.view.LegiscanPeopleView;
 import us.poliscore.legiscan.view.LegiscanMasterListView;
+import us.poliscore.legiscan.view.LegiscanPeopleView;
 import us.poliscore.legiscan.view.LegiscanResponse;
 import us.poliscore.legiscan.view.LegiscanRollCallView;
 import us.poliscore.legiscan.view.LegiscanSearchView;
@@ -74,6 +71,10 @@ public class LegiscanService {
         }
 
         return url.toString();
+    }
+    
+    public LegiscanResponse makeRequest(String url) {
+        return makeRequest(new TypeReference<LegiscanResponse>() {}, url);
     }
 
     public <T> T makeRequest(TypeReference<T> typeRef, String url) {
@@ -209,8 +210,8 @@ public class LegiscanService {
      * @param billId
      * @return
      */
-    public LegiscanBillView getBill(String billId) {
-        String url = buildUrl("getBill", "id", billId);
+    public LegiscanBillView getBill(int billId) {
+        String url = buildUrl("getBill", "id", String.valueOf(billId));
 
         LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
@@ -227,8 +228,8 @@ public class LegiscanService {
      * @param docId Retrieve bill text information for doc_id as given by id
      * @return Bill text including date, draft revision information and MIME type, the bill text itself is base64 encoded to allow for binary PDF/Word transfers.
      */
-    public LegiscanBillTextView getBillText(String docId) {
-        String url = buildUrl("getBillText", "id", docId);
+    public LegiscanBillTextView getBillText(int docId) {
+        String url = buildUrl("getBillText", "id", String.valueOf(docId));
 
         LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
@@ -246,8 +247,8 @@ public class LegiscanService {
      * @param amendmentId Retrieve amendment information for amendment_id as given by id
      * @return Amendment text including date, adoption status, along with title/description information and MIME type, the amendment text itself is base64 encoded to allow for binary PDF/Word transfers.
      */
-    public LegiscanAmendmentView getAmendment(String amendmentId) {
-        String url = buildUrl("getAmendment", "id", amendmentId);
+    public LegiscanAmendmentView getAmendment(int amendmentId) {
+        String url = buildUrl("getAmendment", "id", String.valueOf(amendmentId));
 
         LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
@@ -265,8 +266,8 @@ public class LegiscanService {
      * @param supplementId Retrieve supplement information for supplement_id as given by id
      * @return Supplement text including type of supplement, date, along with title/description information and MIME type, the supplement text itself is base64 encoded to allow for binary PDF/Word transfers.
      */
-    public LegiscanSupplementView getSupplement(String supplementId) {
-        String url = buildUrl("getSupplement", "id", supplementId);
+    public LegiscanSupplementView getSupplement(int supplementId) {
+        String url = buildUrl("getSupplement", "id", String.valueOf(supplementId));
 
         LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
@@ -284,8 +285,8 @@ public class LegiscanService {
      * @param rollCallId Retrieve vote detail information for roll_call_id as given by id
      * @return Roll call detail for individual votes for people_id and summary result information.
      */
-    public LegiscanRollCallView getRollCall(String rollCallId) {
-        String url = buildUrl("getRollCall", "id", rollCallId);
+    public LegiscanRollCallView getRollCall(int rollCallId) {
+        String url = buildUrl("getRollCall", "id", String.valueOf(rollCallId));
 
         LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
@@ -304,8 +305,8 @@ public class LegiscanService {
      * @param peopleId Retrieve person information for people_id as given by id
      * @return Sponsor information including name information, party affiliation and role along with identifiers for third party data sources.
      */
-    public LegiscanPeopleView getPerson(String peopleId) {
-        String url = buildUrl("getPerson", "id", peopleId);
+    public LegiscanPeopleView getPerson(int peopleId) {
+        String url = buildUrl("getPerson", "id", String.valueOf(peopleId));
 
         LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},

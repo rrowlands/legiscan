@@ -33,6 +33,7 @@ import us.poliscore.legiscan.view.LegiscanRollCallView;
 import us.poliscore.legiscan.view.LegiscanSessionView;
 import us.poliscore.legiscan.view.LegiscanSponsoredBillView;
 import us.poliscore.legiscan.view.LegiscanSupplementView;
+import us.poliscore.legiscan.view.UpdateBillsResult;
 
 /**
  * Implements a "Legiscan Client", as defined per the Legiscan documentation. Default configuration provides for the following additional services
@@ -147,9 +148,9 @@ public class LegiscanClient extends LegiscanService {
         return 0;
     }
 
-    protected <T> T getOrRequest(String cacheKey, TypeReference<T> typeRef, String url) {
-        return cache.get(cacheKey, typeRef).orElseGet(() -> {
-            T value = makeRequest(typeRef, url);
+    protected LegiscanResponse getOrRequest(String cacheKey, String url) {
+        return cache.get(cacheKey).orElseGet(() -> {
+            LegiscanResponse value = makeRequest(url);
             cache.put(cacheKey, value, ttlForCacheKey(cacheKey));
             return value;
         });
@@ -202,25 +203,28 @@ public class LegiscanClient extends LegiscanService {
 		
 		client.cacheDataset("US", 2025);
 		
-//		System.out.println(new ObjectMapper().writeValueAsString(result));
+		var result = client.updateBills("US");
+		
+		System.out.println(new ObjectMapper().writeValueAsString(result));
 	}
     
     /**
-     * Fetches the dataset for the provided state and year and caches it for later retrieval.
+     * Fetches the dataset for the provided state and year and caches it for later retrieval. Any objects which are already cached will simply be updated.
      * 
-     * @param session
+     * @param state
+     * @param year
      */
     @SneakyThrows
     public void cacheDataset(String state, int year)
     {
-        List<LegiscanDatasetView> datasets = this.getDatasetList(state, year);
+    	List<LegiscanDatasetView> datasets = this.getDatasetList(state, year);
         
         for (var dataset : datasets)
         {
         	long people = 0;
             long bills = 0;
             long votes = 0;
-        	
+            
             byte[] zipBytes = this.getDatasetRaw(dataset.getSessionId(), dataset.getAccessKey(), "json");
 
             // Write zipBytes to a temporary file
@@ -284,6 +288,48 @@ public class LegiscanClient extends LegiscanService {
             LOGGER.info("Successfully loaded [" + state + ", " + dataset.getYearEnd() + ", " + dataset.getSessionId() + "] into cache [" + cache.toString() + "]. Dataset contained " + people + " people, " + bills + " bills, and " + votes + " votes.");
         }
     }
+    
+    /**
+     * Fetches the masterlist and caches all new or updated bills.
+     * 
+     * @param state
+     * @return UpdateBillsResult A result object which contains all the bills which are either new or updated.
+     */
+    public UpdateBillsResult updateBills(String state)
+    {
+    	var result = new UpdateBillsResult();
+    	var masterlist = this.getMasterListRaw(state);
+    	
+    	for (var summary : masterlist.getBills().values())
+    	{
+            String cacheKey = LegiscanBillView.getCacheKey(summary.getBillId());
+    		
+    		var cached = this.cache.get(cacheKey).orElse(null);
+    		
+    		if (cached == null || !summary.getChangeHash().equals(cached.getBill().getChangeHash()))
+    		{
+    			cache.remove(cacheKey);
+    			var bill = this.getBill(summary.getBillId());
+    			result.getUpdatedBills().add(bill);
+    		}
+    	}
+    	
+    	for (var summary : masterlist.getBills().values())
+    	{
+            String cacheKey = LegiscanBillView.getCacheKey(summary.getBillId());
+    		
+    		var cached = this.cache.get(cacheKey).orElse(null);
+    		
+    		if (cached == null || !summary.getChangeHash().equals(cached.getBill().getChangeHash()))
+    		{
+    			cache.remove(cacheKey);
+    			var bill = this.getBill(summary.getBillId());
+    			result.getUpdatedBills().add(bill);
+    		}
+    	}
+    	
+    	return result;
+    }
 
     @Override
     public List<LegiscanSessionView> getSessionList(String state) {
@@ -292,7 +338,6 @@ public class LegiscanClient extends LegiscanService {
 
         LegiscanResponse response = getOrRequest(
                 cacheKey,
-                new TypeReference<LegiscanResponse>() {},
                 url
         );
         return response.getSessions();
@@ -305,7 +350,6 @@ public class LegiscanClient extends LegiscanService {
 
         LegiscanResponse response = getOrRequest(
                 cacheKey,
-                new TypeReference<LegiscanResponse>() {},
                 url
         );
         return response.getMasterlist();
@@ -318,7 +362,6 @@ public class LegiscanClient extends LegiscanService {
 
         LegiscanResponse response = getOrRequest(
                 cacheKey,
-                new TypeReference<LegiscanResponse>() {},
                 url
         );
         return response.getMasterlist();
@@ -331,7 +374,6 @@ public class LegiscanClient extends LegiscanService {
 
         LegiscanResponse response = getOrRequest(
                 cacheKey,
-                new TypeReference<LegiscanResponse>() {},
                 url
         );
         return response.getMasterlist();
@@ -344,33 +386,29 @@ public class LegiscanClient extends LegiscanService {
 
         LegiscanResponse response = getOrRequest(
                 cacheKey,
-                new TypeReference<LegiscanResponse>() {},
                 url
         );
         return response.getMasterlist();
     }
-
-    @Override
-    public LegiscanBillView getBill(String billId) {
-        String url = buildUrl("getBill", "id", billId);
+    
+    public LegiscanBillView getBill(int billId) {
+        String url = buildUrl("getBill", "id", String.valueOf(billId));
         String cacheKey = cacheKeyFromUrl(url);
 
         LegiscanResponse response = getOrRequest(
                 cacheKey,
-                new TypeReference<LegiscanResponse>() {},
                 url
         );
         return response.getBill();
     }
     
     @Override
-    public LegiscanBillTextView getBillText(String docId) {
-        String url = buildUrl("getBillText", "id", docId);
+    public LegiscanBillTextView getBillText(int docId) {
+        String url = buildUrl("getBillText", "id", String.valueOf(docId));
         String cacheKey = cacheKeyFromUrl(url);
 
         LegiscanResponse response = getOrRequest(
                 cacheKey,
-                new TypeReference<LegiscanResponse>() {},
                 url
         );
         
@@ -378,13 +416,12 @@ public class LegiscanClient extends LegiscanService {
     }
     
     @Override
-    public LegiscanAmendmentView getAmendment(String amendmentId) {
-        String url = buildUrl("getAmendment", "id", amendmentId);
+    public LegiscanAmendmentView getAmendment(int amendmentId) {
+        String url = buildUrl("getAmendment", "id", String.valueOf(amendmentId));
         String cacheKey = cacheKeyFromUrl(url);
 
         LegiscanResponse response = getOrRequest(
                 cacheKey,
-                new TypeReference<LegiscanResponse>() {},
                 url
         );
         
@@ -392,13 +429,12 @@ public class LegiscanClient extends LegiscanService {
     }
     
     @Override
-    public LegiscanSupplementView getSupplement(String supplementId) {
-        String url = buildUrl("getSupplement", "id", supplementId);
+    public LegiscanSupplementView getSupplement(int supplementId) {
+        String url = buildUrl("getSupplement", "id", String.valueOf(supplementId));
         String cacheKey = cacheKeyFromUrl(url);
 
         LegiscanResponse response = getOrRequest(
                 cacheKey,
-                new TypeReference<LegiscanResponse>() {},
                 url
         );
         
@@ -406,26 +442,24 @@ public class LegiscanClient extends LegiscanService {
     }
     
     @Override
-    public LegiscanRollCallView getRollCall(String rollCallId) {
-        String url = buildUrl("getRollCall", "id", rollCallId);
+    public LegiscanRollCallView getRollCall(int rollCallId) {
+        String url = buildUrl("getRollCall", "id", String.valueOf(rollCallId));
         String cacheKey = cacheKeyFromUrl(url);
 
         LegiscanResponse response = getOrRequest(
                 cacheKey,
-                new TypeReference<LegiscanResponse>() {},
                 url
         );
         return response.getRollcall();
     }
     
     @Override
-    public LegiscanPeopleView getPerson(String peopleId) {
-        String url = buildUrl("getPerson", "id", peopleId);
+    public LegiscanPeopleView getPerson(int peopleId) {
+        String url = buildUrl("getPerson", "id", String.valueOf(peopleId));
         String cacheKey = cacheKeyFromUrl(url);
 
         LegiscanResponse response = getOrRequest(
                 cacheKey,
-                new TypeReference<LegiscanResponse>() {},
                 url
         );
         
@@ -439,7 +473,6 @@ public class LegiscanClient extends LegiscanService {
 
         LegiscanResponse response = getOrRequest(
                 cacheKey,
-                new TypeReference<LegiscanResponse>() {},
                 url
         );
         
@@ -453,7 +486,6 @@ public class LegiscanClient extends LegiscanService {
 
         LegiscanResponse response = getOrRequest(
                 cacheKey,
-                new TypeReference<LegiscanResponse>() {},
                 url
         );
         
@@ -481,7 +513,6 @@ public class LegiscanClient extends LegiscanService {
 
         LegiscanResponse response = getOrRequest(
                 cacheKey,
-                new TypeReference<LegiscanResponse>() {},
                 url
         );
         
@@ -495,7 +526,6 @@ public class LegiscanClient extends LegiscanService {
 
         LegiscanResponse response = getOrRequest(
                 cacheKey,
-                new TypeReference<LegiscanResponse>() {},
                 url
         );
         

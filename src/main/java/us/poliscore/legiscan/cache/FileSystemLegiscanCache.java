@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import us.poliscore.legiscan.view.LegiscanResponse;
 
 import java.io.File;
 import java.io.IOException;
@@ -67,6 +68,11 @@ public class FileSystemLegiscanCache implements LegiscanCache {
             return Optional.empty();
         }
     }
+    
+    @Override
+    public Optional<LegiscanResponse> get(String key) {
+    	return get(key, new TypeReference<LegiscanResponse>() {});
+    }
 
     @Override
     public void put(String key, Object value) {
@@ -89,6 +95,19 @@ public class FileSystemLegiscanCache implements LegiscanCache {
 		return "File System Cache (" + baseDir.getAbsolutePath() + "]";
 	}
 
+    @Override
+    public void remove(String cacheKey) {
+        File file = resolvePath(cacheKey);
+        if (file.exists()) {
+            try {
+                Files.delete(file.toPath());
+                LOGGER.fine("Cache file deleted for key: " + cacheKey);
+            } catch (IOException e) {
+                LOGGER.log(Level.WARNING, "Failed to delete cache file for key: " + cacheKey, e);
+            }
+        }
+    }
+    
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
