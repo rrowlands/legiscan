@@ -36,4 +36,9 @@ public class NoOpLegiscanCache implements LegiscanCache {
 	public void remove(String cacheKey) {
 		// no-op
 	}
+
+	@Override
+	public boolean containsKey(String key) {
+		return false;
+	}
 }

@@ -14,8 +14,10 @@ import java.util.logging.Logger;
 
 import org.apache.commons.lang3.tuple.Pair;
 
+import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 
 import lombok.SneakyThrows;
 import net.lingala.zip4j.ZipFile;
@@ -99,7 +101,10 @@ public class LegiscanClient extends LegiscanService {
 
         public LegiscanClient build() {
             if (this.objectMapper == null) {
-                this.objectMapper = new ObjectMapper();
+            	this.objectMapper = new ObjectMapper();
+            	
+            	// The dataset fetching methods have some large zips which are serialized into json. Without this the deserialization will fail
+            	objectMapper.getFactory().setStreamReadConstraints(StreamReadConstraints.builder().maxStringLength(100_000_000).build());
             }
 
             if (this.cache == null) {
@@ -118,6 +123,22 @@ public class LegiscanClient extends LegiscanService {
             return client;
         }
     }
+    
+    @SneakyThrows
+    public static void main(String[] args) {
+		var client = LegiscanClient.builder(args[0]).build();
+		
+		List<LegiscanDatasetView> datasets = client.getDatasetList("US", 2024);
+        
+        for (var dataset : datasets)
+        {
+			client.cacheDataset(dataset);
+			
+			var result = client.updateBills(dataset.getSessionId());
+			
+			System.out.println(new ObjectMapper().writeValueAsString(result));
+        }
+	}
     
     protected long ttlForCacheKey(String cacheKey) {
     	var op = cacheKey.split("/")[0];
@@ -149,7 +170,12 @@ public class LegiscanClient extends LegiscanService {
     }
 
     protected LegiscanResponse getOrRequest(String cacheKey, String url) {
+    	if (cache.containsKey(cacheKey)) {
+    		LOGGER.fine("Pulling object [" + cacheKey + "] from cache.");
+    	}
+    	
         return cache.get(cacheKey).orElseGet(() -> {
+        	LOGGER.info("Fetching object [" + cacheKey + "] from Legiscan.");
             LegiscanResponse value = makeRequest(url);
             cache.put(cacheKey, value, ttlForCacheKey(cacheKey));
             return value;
@@ -195,98 +221,80 @@ public class LegiscanClient extends LegiscanService {
         }
     }
     
-    @SneakyThrows
-    public static void main(String[] args) {
-		var client = LegiscanClient.builder(args[0]).build();
-		
-//		var result = client.getDatasetList("US", 2024);
-		
-		client.cacheDataset("US", 2025);
-		
-		var result = client.updateBills("US");
-		
-		System.out.println(new ObjectMapper().writeValueAsString(result));
-	}
-    
     /**
-     * Fetches the dataset for the provided state and year and caches it for later retrieval. Any objects which are already cached will simply be updated.
+     * Caches the provided dataset for later retrieval. Any objects which are already cached will simply be updated.
      * 
      * @param state
      * @param year
      */
     @SneakyThrows
-    public void cacheDataset(String state, int year)
+    public void cacheDataset(LegiscanDatasetView dataset)
     {
-    	List<LegiscanDatasetView> datasets = this.getDatasetList(state, year);
+    	long people = 0;
+        long bills = 0;
+        long votes = 0;
         
-        for (var dataset : datasets)
-        {
-        	long people = 0;
-            long bills = 0;
-            long votes = 0;
-            
-            byte[] zipBytes = this.getDatasetRaw(dataset.getSessionId(), dataset.getAccessKey(), "json");
+        byte[] zipBytes = this.getDatasetRaw(dataset.getSessionId(), dataset.getAccessKey(), "json");
 
-            // Write zipBytes to a temporary file
-            Path tempZip = Files.createTempFile("dataset-", ".zip");
-            
-            try
-            {
-	            Files.write(tempZip, zipBytes);
-	
-	            // Use ZipFile from zip4j to extract
-	            try (ZipFile zipFile = new ZipFile(tempZip.toFile())) {
-	                File extractToDir = new File(PoliscoreLegiscanUtil.getDeployedPath(), "cache/" + state + "/" + year + "/" + dataset.getSessionId());
-	                zipFile.extractAll(extractToDir.getAbsolutePath());
-	                
-	                File fPeopleParent = PoliscoreLegiscanUtil.childWithName(extractToDir, "people");
-	                File fBillParent = PoliscoreLegiscanUtil.childWithName(extractToDir, "bill");
-	                File fVoteParent = PoliscoreLegiscanUtil.childWithName(extractToDir, "vote");
-	                
-	                for(File file : PoliscoreLegiscanUtil.allFilesWhere(fPeopleParent, f -> f.getName().toLowerCase().endsWith(".json")))
-	                {
-	                	var resp = objectMapper.readValue(file, LegiscanResponse.class);
-	                	var person = resp.getPerson();
-	                	
-	                	String url = buildUrl("getPerson", "id", String.valueOf(person.getPeopleId()));
-	                    String cacheKey = cacheKeyFromUrl(url);
-	                	
-	                	cache.put(cacheKey, resp);
-	                	people++;
-	                }
-	                
-	                for(File file : PoliscoreLegiscanUtil.allFilesWhere(fBillParent, f -> f.getName().toLowerCase().endsWith(".json")))
-	                {
-	                	var resp = objectMapper.readValue(file, LegiscanResponse.class);
-	                	var bill = resp.getBill();
-	                	
-	                	String url = buildUrl("getBill", "id", bill.getBillId());
-	                    String cacheKey = cacheKeyFromUrl(url);
-	                	
-	                	cache.put(cacheKey, resp);
-	                	bills++;
-	                }
-	                
-	                for(File file : PoliscoreLegiscanUtil.allFilesWhere(fVoteParent, f -> f.getName().toLowerCase().endsWith(".json")))
-	                {
-	                	var resp = objectMapper.readValue(file, LegiscanResponse.class);
-	                	var rollCall = resp.getRollcall();
-	                	
-	                	String url = buildUrl("getRollCall", "id", String.valueOf(rollCall.getRollCallId()));
-	                    String cacheKey = cacheKeyFromUrl(url);
-	                	
-	                	cache.put(cacheKey, resp);
-	                	votes++;
-	                }
-	            }
+        // Write zipBytes to a temporary file
+        Path tempZip = Files.createTempFile("dataset-", ".zip");
+        
+        try
+        {
+            Files.write(tempZip, zipBytes);
+
+            // Use ZipFile from zip4j to extract
+            try (ZipFile zipFile = new ZipFile(tempZip.toFile())) {
+                File extractToDir = new File(PoliscoreLegiscanUtil.getDeployedPath(), "cache/" + dataset.getStateId() + "/" + dataset.getYearEnd() + "/" + dataset.getSessionId());
+                zipFile.extractAll(extractToDir.getAbsolutePath());
+                
+                File fPeopleParent = PoliscoreLegiscanUtil.childWithName(extractToDir, "people");
+                File fBillParent = PoliscoreLegiscanUtil.childWithName(extractToDir, "bill");
+                File fVoteParent = PoliscoreLegiscanUtil.childWithName(extractToDir, "vote");
+                
+                for(File file : PoliscoreLegiscanUtil.allFilesWhere(fPeopleParent, f -> f.getName().toLowerCase().endsWith(".json")))
+                {
+                	var resp = objectMapper.readValue(file, LegiscanResponse.class);
+                	var person = resp.getPerson();
+                	
+                	String url = buildUrl("getPerson", "id", String.valueOf(person.getPeopleId()));
+                    String cacheKey = cacheKeyFromUrl(url);
+                	
+                	cache.put(cacheKey, resp);
+                	people++;
+                }
+                
+                for(File file : PoliscoreLegiscanUtil.allFilesWhere(fBillParent, f -> f.getName().toLowerCase().endsWith(".json")))
+                {
+                	var resp = objectMapper.readValue(file, LegiscanResponse.class);
+                	var bill = resp.getBill();
+                	
+                	String url = buildUrl("getBill", "id", bill.getBillId());
+                    String cacheKey = cacheKeyFromUrl(url);
+                	
+                	cache.put(cacheKey, resp);
+                	bills++;
+                }
+                
+                for(File file : PoliscoreLegiscanUtil.allFilesWhere(fVoteParent, f -> f.getName().toLowerCase().endsWith(".json")))
+                {
+                	var resp = objectMapper.readValue(file, LegiscanResponse.class);
+                	var rollCall = resp.getRollcall();
+                	
+                	String url = buildUrl("getRollCall", "id", String.valueOf(rollCall.getRollCallId()));
+                    String cacheKey = cacheKeyFromUrl(url);
+                	
+                	cache.put(cacheKey, resp);
+                	votes++;
+                }
             }
-            catch (Throwable t)
-            {
-            	Files.deleteIfExists(tempZip);
-            }
-            
-            LOGGER.info("Successfully loaded [" + state + ", " + dataset.getYearEnd() + ", " + dataset.getSessionId() + "] into cache [" + cache.toString() + "]. Dataset contained " + people + " people, " + bills + " bills, and " + votes + " votes.");
         }
+        catch (Throwable t)
+        {
+        	Files.deleteIfExists(tempZip);
+        }
+        
+        LOGGER.info("Successfully loaded [" + dataset.getStateId()+ ", " + dataset.getYearEnd() + ", " + dataset.getSessionId() + "] into cache [" + cache.toString() + "]. Dataset contained " + people + " people, " + bills + " bills, and " + votes + " votes.");
     }
     
     /**
@@ -295,11 +303,15 @@ public class LegiscanClient extends LegiscanService {
      * @param state
      * @return UpdateBillsResult A result object which contains all the bills which are either new or updated.
      */
-    public UpdateBillsResult updateBills(String state)
+    public UpdateBillsResult updateBills(int sessionId)
     {
-    	var result = new UpdateBillsResult();
-    	var masterlist = this.getMasterListRaw(state);
+    	LOGGER.info("Updating bills from Legiscan for session " + sessionId);
     	
+    	var result = new UpdateBillsResult();
+    	var masterlist = this.getMasterListRaw(sessionId);
+    	
+    	// Count how many
+    	long count = 0;
     	for (var summary : masterlist.getBills().values())
     	{
             String cacheKey = LegiscanBillView.getCacheKey(summary.getBillId());
@@ -308,12 +320,12 @@ public class LegiscanClient extends LegiscanService {
     		
     		if (cached == null || !summary.getChangeHash().equals(cached.getBill().getChangeHash()))
     		{
-    			cache.remove(cacheKey);
-    			var bill = this.getBill(summary.getBillId());
-    			result.getUpdatedBills().add(bill);
+    			count++;
     		}
     	}
+    	LOGGER.info("Will fetch " + count + " bills from Legiscan.");
     	
+    	// Do it
     	for (var summary : masterlist.getBills().values())
     	{
             String cacheKey = LegiscanBillView.getCacheKey(summary.getBillId());

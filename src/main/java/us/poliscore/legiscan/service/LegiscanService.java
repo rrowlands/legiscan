@@ -167,7 +167,7 @@ public class LegiscanService {
     }
     
     /**
-     * Retrieve master bill list optimized for change_hash detection
+     * Retrieve master bill list optimized for change_hash detection. Use with caution.
      * 
      * Refresh frequency: 1 hour
      * 

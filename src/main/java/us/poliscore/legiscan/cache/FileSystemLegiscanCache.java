@@ -108,6 +108,13 @@ public class FileSystemLegiscanCache implements LegiscanCache {
         }
     }
     
+    @Override
+	public boolean containsKey(String key) {
+    	File file = resolvePath(key);
+    	
+    	return file.exists();
+	}
+    
     @Data
     @NoArgsConstructor
     @AllArgsConstructor
