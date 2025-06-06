@@ -19,7 +19,7 @@ public class LegiscanBillView {
 	}
 	
     @JsonProperty("bill_id")
-    private String billId;
+    private Integer billId;
     
     @JsonProperty("bill_number")
     private String billNumber;

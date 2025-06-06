@@ -57,7 +57,7 @@ public class FileSystemLegiscanCache implements LegiscanCache {
             byte[] data = Files.readAllBytes(file.toPath());
             CachedEntry entry = objectMapper.readValue(data, CachedEntry.class);
 
-            long now = Instant.now().toEpochMilli();
+            long now = Instant.now().getEpochSecond();
             if (entry.getTtlSecs() > 0 && now > entry.getTimestamp() + entry.getTtlSecs()) {
                 LOGGER.fine("Cache expired for key: " + key);
                 file.delete(); // Clean up expired file
@@ -120,7 +120,7 @@ public class FileSystemLegiscanCache implements LegiscanCache {
 	}
     
     protected long ttlForCacheKey(String cacheKey) {
-    	return LegiscanClient.isUrlStatic(cacheKey) ? 0 : defaultTtlSecs;
+    	return LegiscanClient.isCacheKeyStatic(cacheKey) ? 0 : defaultTtlSecs;
     }
     
     @Data

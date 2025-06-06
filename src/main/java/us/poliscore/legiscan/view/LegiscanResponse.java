@@ -24,7 +24,7 @@ public class LegiscanResponse {
     @JsonProperty("person")
     private LegiscanPeopleView person;
     
-    @JsonProperty("rollcall")
+    @JsonProperty("roll_call")
     private LegiscanRollCallView rollcall;
     
     @JsonProperty("bills")
