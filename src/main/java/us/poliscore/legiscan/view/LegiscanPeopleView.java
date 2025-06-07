@@ -9,6 +9,10 @@ import lombok.Data;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class LegiscanPeopleView {
     
+	public static String getCacheKey(Integer peopleId) {
+		return "getrollcall/" + peopleId;
+	}
+	
     @JsonProperty("people_id")
     private Integer peopleId;
     

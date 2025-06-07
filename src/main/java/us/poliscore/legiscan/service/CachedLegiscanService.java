@@ -22,6 +22,7 @@ import lombok.Getter;
 import lombok.SneakyThrows;
 import net.lingala.zip4j.ZipFile;
 import us.poliscore.legiscan.PoliscoreLegiscanUtil;
+import us.poliscore.legiscan.cache.CachedLegiscanDataset;
 import us.poliscore.legiscan.cache.FileSystemLegiscanCache;
 import us.poliscore.legiscan.cache.LegiscanCache;
 import us.poliscore.legiscan.view.LegiscanAmendmentView;

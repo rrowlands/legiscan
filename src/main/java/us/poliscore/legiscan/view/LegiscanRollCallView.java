@@ -11,6 +11,10 @@ import java.util.List;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class LegiscanRollCallView {
     
+	public static String getCacheKey(Integer rollCallId) {
+		return "getrollcall/" + rollCallId;
+	}
+	
     @JsonProperty("roll_call_id")
     private Integer rollCallId;
     

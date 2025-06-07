@@ -1,4 +1,4 @@
-package us.poliscore.legiscan.service;
+package us.poliscore.legiscan.cache;
 
 import java.io.File;
 import java.nio.file.Files;
@@ -13,6 +13,7 @@ import lombok.Getter;
 import lombok.SneakyThrows;
 import net.lingala.zip4j.ZipFile;
 import us.poliscore.legiscan.PoliscoreLegiscanUtil;
+import us.poliscore.legiscan.service.CachedLegiscanService;
 import us.poliscore.legiscan.view.LegiscanBillView;
 import us.poliscore.legiscan.view.LegiscanDatasetView;
 import us.poliscore.legiscan.view.LegiscanMasterListView;
@@ -98,8 +99,7 @@ public class CachedLegiscanDataset {
                 	var resp = objectMapper.readValue(file, LegiscanResponse.class);
                 	var person = resp.getPerson();
                 	
-                	String url = legiscan.buildUrl("getPerson", "id", String.valueOf(person.getPeopleId()));
-                    String cacheKey = legiscan.cacheKeyFromUrl(url);
+                    String cacheKey = LegiscanPeopleView.getCacheKey(person.getPeopleId());
                 	
                     legiscan.getCache().put(cacheKey, resp);
                 	people.put(person.getPeopleId(), person);
@@ -131,8 +131,7 @@ public class CachedLegiscanDataset {
                 	var resp = objectMapper.readValue(file, LegiscanResponse.class);
                 	var rollCall = resp.getRollcall();
                 	
-                	String url = legiscan.buildUrl("getRollCall", "id", String.valueOf(rollCall.getRollCallId()));
-                    String cacheKey = legiscan.cacheKeyFromUrl(url);
+                    String cacheKey = LegiscanRollCallView.getCacheKey(rollCall.getRollCallId());
                 	
                     legiscan.getCache().put(cacheKey, resp);
                 	votes.put(rollCall.getRollCallId(), rollCall);
