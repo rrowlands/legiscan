@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import us.poliscore.legiscan.service.LegiscanClient;
+import us.poliscore.legiscan.service.CachedLegiscanService;
 import us.poliscore.legiscan.view.LegiscanResponse;
 
 import java.io.File;
@@ -120,7 +120,7 @@ public class FileSystemLegiscanCache implements LegiscanCache {
 	}
     
     protected long ttlForCacheKey(String cacheKey) {
-    	return LegiscanClient.isCacheKeyStatic(cacheKey) ? 0 : defaultTtlSecs;
+    	return CachedLegiscanService.isCacheKeyStatic(cacheKey) ? 0 : defaultTtlSecs;
     }
     
     @Data

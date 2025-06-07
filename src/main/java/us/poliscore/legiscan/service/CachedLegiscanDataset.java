@@ -15,16 +15,18 @@ import net.lingala.zip4j.ZipFile;
 import us.poliscore.legiscan.PoliscoreLegiscanUtil;
 import us.poliscore.legiscan.view.LegiscanBillView;
 import us.poliscore.legiscan.view.LegiscanDatasetView;
+import us.poliscore.legiscan.view.LegiscanMasterListView;
 import us.poliscore.legiscan.view.LegiscanPeopleView;
 import us.poliscore.legiscan.view.LegiscanResponse;
 import us.poliscore.legiscan.view.LegiscanRollCallView;
+import us.poliscore.legiscan.view.LegiscanMasterListView.BillSummary;
 
 public class CachedLegiscanDataset {
 	
 	private static final Logger LOGGER = Logger.getLogger(CachedLegiscanDataset.class.getName());
 	
 	@Getter
-	protected LegiscanClient legiscan;
+	protected CachedLegiscanService legiscan;
 	
 	@Getter
 	protected LegiscanDatasetView dataset;
@@ -40,7 +42,7 @@ public class CachedLegiscanDataset {
 	@Getter
 	protected Map<Integer, LegiscanRollCallView> votes = new HashMap<Integer, LegiscanRollCallView>();
 	
-	public CachedLegiscanDataset(LegiscanClient client, LegiscanDatasetView dataset, ObjectMapper objectMapper)
+	public CachedLegiscanDataset(CachedLegiscanService client, LegiscanDatasetView dataset, ObjectMapper objectMapper)
 	{
 		this.legiscan = client;
 		this.dataset = dataset;
@@ -61,7 +63,10 @@ public class CachedLegiscanDataset {
 	
 	/**
 	 * Fetches the dataset via the Legiscan 'bulk loader', by hitting the 'getDatasetRaw' API to receive a zip file, and then loads that zip file
-	 * into the legiscan cache. This will load people, bills, and votes.  
+	 * into the legiscan cache. This will load people, bills, and votes.
+	 * 
+	 * If a bill already exists in the cache it will not be updated; people and votes will be updated. This is because what's in the cache could be
+	 * more up-to-date than what we currently have for bills.
 	 */
 	@SneakyThrows
 	protected void bulkLoad()
@@ -103,14 +108,21 @@ public class CachedLegiscanDataset {
                 for(File f : PoliscoreLegiscanUtil.allFilesWhere(fBillParent, f -> f.getName().toLowerCase().endsWith(".json")))
                 {
                 	file = f;
+                	
                 	var resp = objectMapper.readValue(file, LegiscanResponse.class);
                 	var bill = resp.getBill();
                 	
-                	String url = legiscan.buildUrl("getBill", "id", String.valueOf(bill.getBillId()));
-                    String cacheKey = legiscan.cacheKeyFromUrl(url);
-                	
-                    legiscan.getCache().put(cacheKey, resp);
-                	bills.put(bill.getBillId(), bill);
+                	// This is unfortunate... Legiscan doesn't actually have a 'last update date' concept, they only have a change hash.
+                	// For this reason, we cannot replace the bill in the cache if it already exists, because it could be more up-to-date
+                	// than what we got from the bulk upload. This should only ever happen with bills, since the refresh frequency for votes
+                	// and people is the same for the rest of their API.
+                	String cacheKey = LegiscanBillView.getCacheKey(bill.getBillId());
+            		if (!legiscan.getCache().containsKey(cacheKey)) {
+	                    legiscan.getCache().put(cacheKey, resp);
+	                	bills.put(bill.getBillId(), bill);
+            		} else {
+            			bills.put(bill.getBillId(), legiscan.getCache().get(cacheKey).get().getBill());
+            		}
                 }
                 
                 for(File f : PoliscoreLegiscanUtil.allFilesWhere(fVoteParent, f -> f.getName().toLowerCase().endsWith(".json")))
@@ -163,8 +175,6 @@ public class CachedLegiscanDataset {
     		}
     	}
     	LOGGER.info("Updating bills. Will fetch " + count + " bills from Legiscan.");
-    	
-    	if (count > 0) throw new RuntimeException("Nope.");
     	
     	// Do it
     	for (var summary : masterlist.getBills().values())

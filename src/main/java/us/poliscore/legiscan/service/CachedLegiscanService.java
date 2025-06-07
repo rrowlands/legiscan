@@ -43,14 +43,14 @@ import us.poliscore.legiscan.view.LegiscanSupplementView;
  * - Bulk populating of datasets
  * - Updating a previously bulk populated dataset and listening to data update events
  */
-public class LegiscanClient extends LegiscanService {
+public class CachedLegiscanService extends LegiscanService {
 
-    private static final Logger LOGGER = Logger.getLogger(LegiscanClient.class.getName());
+    private static final Logger LOGGER = Logger.getLogger(CachedLegiscanService.class.getName());
 
     @Getter
     protected final LegiscanCache cache;
 
-    protected LegiscanClient(String apiKey, ObjectMapper objectMapper, LegiscanCache cache) {
+    protected CachedLegiscanService(String apiKey, ObjectMapper objectMapper, LegiscanCache cache) {
         super(apiKey, objectMapper);
         this.cache = cache;
     }
@@ -94,7 +94,7 @@ public class LegiscanClient extends LegiscanService {
         	return this;
         }
 
-        public LegiscanClient build() {
+        public CachedLegiscanService build() {
             if (this.objectMapper == null) {
             	this.objectMapper = new ObjectMapper();
             	
@@ -111,7 +111,7 @@ public class LegiscanClient extends LegiscanService {
                 this.cache = new FileSystemLegiscanCache(dir, this.objectMapper, ttl);
             }
 
-            var client = new LegiscanClient(apiKey, objectMapper, cache);
+            var client = new CachedLegiscanService(apiKey, objectMapper, cache);
             
             return client;
         }
@@ -119,7 +119,7 @@ public class LegiscanClient extends LegiscanService {
     
     @SneakyThrows
     public static void main(String[] args) {
-		var client = LegiscanClient.builder(args[0]).build();
+		var client = CachedLegiscanService.builder(args[0]).build();
 		
 		List<LegiscanDatasetView> datasets = client.getDatasetList("US", 2024);
         
