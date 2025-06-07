@@ -118,20 +118,6 @@ public class CachedLegiscanService extends LegiscanService {
         }
     }
     
-    @SneakyThrows
-    public static void main(String[] args) {
-		var client = CachedLegiscanService.builder(args[0]).build();
-		
-		List<LegiscanDatasetView> datasets = client.getDatasetList("US", 2024);
-        
-        for (var dataset : datasets)
-        {
-			var cachedDataset = client.cacheDataset(dataset);
-			
-//			System.out.println(new ObjectMapper().writeValueAsString(result));
-        }
-	}
-    
     protected LegiscanResponse getOrRequest(String cacheKey, String url) {
     	if (cache.containsKey(cacheKey)) {
     		LOGGER.fine("Pulling object [" + cacheKey + "] from cache.");
@@ -207,6 +193,29 @@ public class CachedLegiscanService extends LegiscanService {
     	
     	return cachedDataset;
     }
+    
+    /**
+     * Fetches the Legiscan dataset and populates the cache with the most up-to-date data. Any objects which are already cached will simply be updated.
+     * The dataset's people, bills and votes can be accessed via the returned CachedLegiscanDataset.
+     * 
+     * @param state
+     * @param year
+     * @param special
+     */
+    @SneakyThrows
+    public CachedLegiscanDataset cacheDataset(String state, int year, boolean special) {
+		List<LegiscanDatasetView> datasets = getDatasetList(state, year);
+        
+        for (var dataset : datasets)
+        {
+        	if (dataset.getSpecial() == (special ? 1 : 0)) {
+        		return cacheDataset(dataset);
+        	}
+        }
+        
+        throw new RuntimeException("Dataset not found!");
+	}
+    public CachedLegiscanDataset cacheDataset(String state, int year) { return cacheDataset(state,year,false); }
 
     @Override
     public List<LegiscanSessionView> getSessionList(String state) {

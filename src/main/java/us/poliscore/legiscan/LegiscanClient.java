@@ -19,18 +19,22 @@ public class LegiscanClient {
         Options options = new Options();
 
         options.addRequiredOption("k", "key", true, "LegiScan API key");
-        options.addRequiredOption("op", "operation", true, "Operation to perform");
+        options.addRequiredOption("op", "operation", true, "Operation to perform. Valid values: cacheDataset, getBill, getBillText, getAmendment,\n" +
+        	    "getSupplement, getRollCall, getPerson, getSessionList, getMasterList,\n" +
+        	    "getMasterListRaw, getSearch, getSearchRaw, getDatasetList, getDataset,\n" +
+        	    "getDatasetRaw, getSessionPeople, getSponsoredList");
 
         options.addOption("i", "id", true, "ID for operations requiring a bill/session/person ID");
         options.addOption("s", "state", true, "State abbreviation (e.g., CA, TX)");
         options.addOption("y", "year", true, "Year filter (e.g., 2024)");
+        options.addOption("sp", "special", true, "Special. Used for cacheDataset. (default: false)");
         options.addOption("q", "query", true, "Query string for search");
         options.addOption("a", "accessKey", true, "Access key for dataset retrieval");
         options.addOption("f", "format", true, "Format for dataset (json, csv)");
         options.addOption("p", "page", true, "Page number for paginated search");
 
         options.addOption("c", "no-cache", false, "Disable caching (enabled by default)");
-        options.addOption("cd", "cache-dir", true, "Directory to use for cached data");
+        options.addOption("cd", "cache-dir", true, "Directory to use for cached data. (default: <user.home>/appdata/poliscore/legiscan)");
         options.addOption("ct", "cache-ttl", true, "Time to live for cached items in seconds (default: 14400)");
 
         CommandLineParser parser = new DefaultParser();
@@ -50,7 +54,7 @@ public class LegiscanClient {
         String op = cmd.getOptionValue("operation");
 
         LegiscanService service;
-        if (cmd.hasOption("no-cache")) {
+        if (cmd.hasOption("no-cache") && !op.equals("cacheDataset")) {
             service = new LegiscanService(apiKey);
         } else {
             CachedLegiscanService.Builder builder = CachedLegiscanService.builder(apiKey);
@@ -70,6 +74,11 @@ public class LegiscanClient {
 
         try {
             switch (op) {
+            	case "cacheDataset" -> {
+            		var cacheService = (CachedLegiscanService)service;
+            		var cached = cacheService.cacheDataset(cmd.getOptionValue("state"), Integer.parseInt(cmd.getOptionValue("year")), Boolean.parseBoolean(cmd.getOptionValue("special")));
+            		System.out.println("Successfully loaded [" + cached.getDataset().getSessionName() + "] into cache [" + cacheService.getCache().toString() + "]. Dataset contained " + cached.getPeople().size() + " people, " + cached.getBills().size()+ " bills, and " + cached.getVotes().size()+ " votes.");
+            	}
                 case "getBill" -> System.out.println(outputMapper.writeValueAsString(service.getBill(Integer.parseInt(cmd.getOptionValue("id")))));
                 case "getBillText" -> System.out.println(outputMapper.writeValueAsString(service.getBillText(Integer.parseInt(cmd.getOptionValue("id")))));
                 case "getAmendment" -> System.out.println(outputMapper.writeValueAsString(service.getAmendment(Integer.parseInt(cmd.getOptionValue("id")))));
