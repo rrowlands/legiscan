@@ -507,18 +507,63 @@ public class LegiscanService {
         return response.getSponsoredbills();
     }
     
+    /**
+     * Retrieves the monitor list of summary bill data currently being tracked by the account
+     * associated with the API key. This includes metadata about the bill, its status, and the
+     * user's stance.
+     *
+     * Refresh frequency: 1 hour
+     *
+     * @param record (Optional) Record filter to specify which monitor list to return.
+     *               Acceptable values are "current", "archived", or a specific year (e.g., "2022").
+     *               Defaults to "current" if null.
+     * @return List of monitored bills with metadata such as bill_id, number, title, and change_hash.
+     */
     public List<LegiscanMonitorView> getMonitorList(String record) {
         String url = buildUrl("getMonitorList", "record", record != null ? record : "current");
         LegiscanResponse response = makeRequest(new TypeReference<LegiscanResponse>() {}, url);
         return new ArrayList<>(response.getMonitorlist().values());
     }
 
+    /**
+     * Retrieves the raw monitor list of bill data currently being tracked by the account
+     * associated with the API key. This is optimized for change tracking via change_hash and
+     * excludes descriptive fields like title or URL.
+     *
+     * Refresh frequency: 1 hour
+     *
+     * @param record (Optional) Record filter to specify which monitor list to return.
+     *               Acceptable values are "current", "archived", or a specific year (e.g., "2022").
+     *               Defaults to "current" if null.
+     * @return List of monitored bills with change_hash and basic metadata for change detection.
+     */
     public List<LegiscanMonitorView> getMonitorListRaw(String record) {
         String url = buildUrl("getMonitorListRaw", "record", record != null ? record : "current");
         LegiscanResponse response = makeRequest(new TypeReference<LegiscanResponse>() {}, url);
         return new ArrayList<>(response.getMonitorlist().values());
     }
 
+    /**
+     * Modifies the monitored bill list for the API key's associated account.
+     * Allows adding, removing, or updating the user's stance on specific bills.
+     *
+     * Acceptable actions:
+     * - monitor: Add bill(s) to the monitor list
+     * - remove:  Remove bill(s) from the monitor list
+     * - set:     Update stance for already-monitored bill(s)
+     *
+     * Stance values:
+     * - watch (default)
+     * - support
+     * - oppose
+     *
+     * Refresh frequency: real-time (instant update)
+     *
+     * @param billIds List of bill IDs to operate on.
+     * @param action  Action to perform: "monitor", "remove", or "set".
+     * @param stance  (Optional) Stance to apply for the bill(s). Defaults to "watch".
+     * @return A map of bill ID to status message describing the result of the operation for each.
+     */
     public Map<String, String> setMonitor(List<Integer> billIds, String action, String stance) {
         String billList = String.join(",", billIds.stream().map(String::valueOf).toList());
         String url = buildUrl("setMonitor",
