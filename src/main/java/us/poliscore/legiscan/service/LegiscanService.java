@@ -7,7 +7,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -21,6 +23,7 @@ import us.poliscore.legiscan.view.LegiscanBillTextView;
 import us.poliscore.legiscan.view.LegiscanBillView;
 import us.poliscore.legiscan.view.LegiscanDatasetView;
 import us.poliscore.legiscan.view.LegiscanMasterListView;
+import us.poliscore.legiscan.view.LegiscanMonitorView;
 import us.poliscore.legiscan.view.LegiscanPeopleView;
 import us.poliscore.legiscan.view.LegiscanResponse;
 import us.poliscore.legiscan.view.LegiscanRollCallView;
@@ -502,6 +505,30 @@ public class LegiscanService {
         );
         
         return response.getSponsoredbills();
+    }
+    
+    public List<LegiscanMonitorView> getMonitorList(String record) {
+        String url = buildUrl("getMonitorList", "record", record != null ? record : "current");
+        LegiscanResponse response = makeRequest(new TypeReference<LegiscanResponse>() {}, url);
+        return new ArrayList<>(response.getMonitorlist().values());
+    }
+
+    public List<LegiscanMonitorView> getMonitorListRaw(String record) {
+        String url = buildUrl("getMonitorListRaw", "record", record != null ? record : "current");
+        LegiscanResponse response = makeRequest(new TypeReference<LegiscanResponse>() {}, url);
+        return new ArrayList<>(response.getMonitorlist().values());
+    }
+
+    public Map<String, String> setMonitor(List<Integer> billIds, String action, String stance) {
+        String billList = String.join(",", billIds.stream().map(String::valueOf).toList());
+        String url = buildUrl("setMonitor",
+            "action", action,
+            "list", billList,
+            "stance", stance != null ? stance : "watch"
+        );
+
+        LegiscanResponse response = makeRequest(new TypeReference<LegiscanResponse>() {}, url);
+        return response.getReturnMap();
     }
 
 }

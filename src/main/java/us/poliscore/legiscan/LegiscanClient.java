@@ -1,6 +1,7 @@
 package us.poliscore.legiscan;
 
 import java.io.File;
+import java.util.List;
 
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.CommandLineParser;
@@ -22,7 +23,7 @@ public class LegiscanClient {
         options.addRequiredOption("op", "operation", true, "Operation to perform. Valid values: cacheDataset, getBill, getBillText, getAmendment,\n" +
         	    "getSupplement, getRollCall, getPerson, getSessionList, getMasterList,\n" +
         	    "getMasterListRaw, getSearch, getSearchRaw, getDatasetList, getDataset,\n" +
-        	    "getDatasetRaw, getSessionPeople, getSponsoredList");
+        	    "getDatasetRaw, getSessionPeople, getSponsoredList, getMonitorList, getMonitorListRaw, setMonitor");
 
         options.addOption("i", "id", true, "ID for operations requiring a bill/session/person ID");
         options.addOption("s", "state", true, "State abbreviation (e.g., CA, TX)");
@@ -32,6 +33,10 @@ public class LegiscanClient {
         options.addOption("a", "accessKey", true, "Access key for dataset retrieval");
         options.addOption("f", "format", true, "Format for dataset (json, csv)");
         options.addOption("p", "page", true, "Page number for paginated search");
+        options.addOption("m", "monitor-ids", true, "Comma-separated list of bill IDs to monitor (required for setMonitor)");
+        options.addOption("ac", "action", true, "Action to take for setMonitor: monitor, remove, or set");
+        options.addOption("st", "stance", true, "Stance to apply (optional, defaults to 'watch')");
+        options.addOption("r", "record", true, "Record filter for monitor list (current, archived, year)");
 
         options.addOption("c", "no-cache", false, "Disable caching (enabled by default)");
         options.addOption("cd", "cache-dir", true, "Directory to use for cached data. (default: <user.home>/appdata/poliscore/legiscan)");
@@ -132,6 +137,27 @@ public class LegiscanClient {
                 ));
                 case "getSessionPeople" -> System.out.println(outputMapper.writeValueAsString(service.getSessionPeople(Integer.parseInt(cmd.getOptionValue("id")))));
                 case "getSponsoredList" -> System.out.println(outputMapper.writeValueAsString(service.getSponsoredList(Integer.parseInt(cmd.getOptionValue("id")))));
+                case "getMonitorList" -> {
+                    String record = cmd.getOptionValue("record", "current");
+                    System.out.println(outputMapper.writeValueAsString(service.getMonitorList(record)));
+                }
+                case "getMonitorListRaw" -> {
+                    String record = cmd.getOptionValue("record", "current");
+                    System.out.println(outputMapper.writeValueAsString(service.getMonitorListRaw(record)));
+                }
+                case "setMonitor" -> {
+                    require(cmd, "monitor-ids");
+                    require(cmd, "action");
+                    List<Integer> ids = List.of(cmd.getOptionValue("monitor-ids").split(","))
+                                            .stream()
+                                            .map(String::trim)
+                                            .map(Integer::parseInt)
+                                            .toList();
+                    String action = cmd.getOptionValue("action");
+                    String stance = cmd.getOptionValue("stance", "watch");
+                    System.out.println(outputMapper.writeValueAsString(service.setMonitor(ids, action, stance)));
+                }
+
                 default -> throw new IllegalArgumentException("Unknown operation: " + op);
             }
         } catch (Exception e) {
@@ -166,6 +192,13 @@ public class LegiscanClient {
             }
             case "getDatasetList" -> {
                 require(cmd, "state");
+            }
+            case "getMonitorList", "getMonitorListRaw" -> {
+                // Optional --record, no required args
+            }
+            case "setMonitor" -> {
+                require(cmd, "monitor-ids");
+                require(cmd, "action");
             }
             default -> throw new IllegalArgumentException("Unknown operation: " + op);
         }

@@ -2,6 +2,7 @@
 package us.poliscore.legiscan.view;
 
 import java.util.List;
+import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -57,9 +58,12 @@ public class LegiscanResponse {
     
     private List<LegiscanPeopleView> sessionpeople;
     
-    private LegiscanMasterListView monitorlist;
-    
     private List<LegiscanSponsoredBillView> sponsoredbills;
+    
+    private Map<String, LegiscanMonitorView> monitorlist;
+    
+    @JsonProperty("return")
+    private Map<String, String> returnMap;
     
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)

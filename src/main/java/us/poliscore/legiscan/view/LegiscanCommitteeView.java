@@ -1,4 +1,3 @@
-
 package us.poliscore.legiscan.view;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -8,13 +7,16 @@ import lombok.Data;
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class LegiscanCommitteeView {
-    
+
     @JsonProperty("committee_id")
     private Integer committeeId;
-    
-    @JsonProperty("committee_body")
-    private String committeeBody;
-    
-    @JsonProperty("committee_name")
-    private String committeeName;
+
+    @JsonProperty("chamber")
+    private String chamber;
+
+    @JsonProperty("chamber_id")
+    private Integer chamberId;
+
+    @JsonProperty("name")
+    private String name;
 }
