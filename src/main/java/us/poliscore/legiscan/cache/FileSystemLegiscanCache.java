@@ -47,7 +47,7 @@ public class FileSystemLegiscanCache implements LegiscanCache {
     }
 
     @Override
-    public <T> Optional<T> get(String key, TypeReference<T> typeRef) {
+    public <T> Optional<T> getOrExpire(String key, TypeReference<T> typeRef) {
         File file = resolvePath(key);
         if (!file.exists()) {
             return Optional.empty();
@@ -57,8 +57,7 @@ public class FileSystemLegiscanCache implements LegiscanCache {
             byte[] data = Files.readAllBytes(file.toPath());
             CachedEntry entry = objectMapper.readValue(data, CachedEntry.class);
 
-            long now = Instant.now().getEpochSecond();
-            if (entry.getTtlSecs() > 0 && now > entry.getTimestamp() + entry.getTtlSecs()) {
+            if (entry.isExpired()) {
                 LOGGER.fine("Cache expired for key: " + key);
                 file.delete(); // Clean up expired file
                 return Optional.empty();
@@ -74,8 +73,27 @@ public class FileSystemLegiscanCache implements LegiscanCache {
     }
     
     @Override
-    public Optional<LegiscanResponse> get(String key) {
-    	return get(key, new TypeReference<LegiscanResponse>() {});
+    public Optional<LegiscanResponse> getOrExpire(String key) {
+    	return getOrExpire(key, new TypeReference<LegiscanResponse>() {});
+    }
+    
+    @Override
+    public Optional<CachedEntry> peek(String key) {
+        File file = resolvePath(key);
+        if (!file.exists()) {
+            return Optional.empty();
+        }
+
+        try {
+            byte[] data = Files.readAllBytes(file.toPath());
+            CachedEntry entry = objectMapper.readValue(data, CachedEntry.class);
+
+            return Optional.of(entry);
+
+        } catch (Exception e) {
+            LOGGER.log(Level.WARNING, "Failed to read cache for key: " + key, e);
+            return Optional.empty();
+        }
     }
 
     @Override
@@ -113,22 +131,11 @@ public class FileSystemLegiscanCache implements LegiscanCache {
     }
     
     @Override
-	public boolean containsKey(String key) {
-    	File file = resolvePath(key);
-    	
-    	return file.exists();
+	public boolean presentAndValid(String key) {
+    	return peek(key).isPresent();
 	}
     
     protected long ttlForCacheKey(String cacheKey) {
     	return CachedLegiscanService.isCacheKeyStatic(cacheKey) ? 0 : defaultTtlSecs;
-    }
-    
-    @Data
-    @NoArgsConstructor
-    @AllArgsConstructor
-    public static class CachedEntry {
-        private Object value;
-        private long timestamp;
-        private long ttlSecs;
     }
 }

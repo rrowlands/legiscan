@@ -50,7 +50,7 @@ public class FileSystemLegiscanCacheTest {
 
         cache.put(key, value);
 
-        Optional<Map<String, String>> result = cache.get(key, new TypeReference<>() {});
+        Optional<Map<String, String>> result = cache.getOrExpire(key, new TypeReference<>() {});
         assertTrue(result.isPresent());
         assertEquals("bar", result.get().get("foo"));
     }
@@ -65,7 +65,7 @@ public class FileSystemLegiscanCacheTest {
         cache.put(key, first);
         cache.put(key, second);
 
-        Optional<Map<String, String>> result = cache.get(key, new TypeReference<>() {});
+        Optional<Map<String, String>> result = cache.getOrExpire(key, new TypeReference<>() {});
         assertTrue(result.isPresent());
         assertEquals("2", result.get().get("a"));
     }

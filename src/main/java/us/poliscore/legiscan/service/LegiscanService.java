@@ -14,6 +14,7 @@ import java.util.logging.Logger;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import lombok.SneakyThrows;
 import us.poliscore.legiscan.exception.LegiscanException;
 import us.poliscore.legiscan.view.LegiscanAmendmentView;
 import us.poliscore.legiscan.view.LegiscanBillTextView;
@@ -73,8 +74,16 @@ public class LegiscanService {
         return url.toString();
     }
     
+    @SneakyThrows
     public LegiscanResponse makeRequest(String url) {
-        return makeRequest(new TypeReference<LegiscanResponse>() {}, url);
+        var resp = makeRequest(new TypeReference<LegiscanResponse>() {}, url);
+        
+        if (resp.getAlert() != null) {
+        	LOGGER.severe("Alert response returned from legiscan [" + objectMapper.writeValueAsString(resp) + "].");
+        	throw new LegiscanException("Alert response returned from legiscan [" + resp.getAlert().getMessage() + "]");
+        }
+        
+        return resp;
     }
 
     public <T> T makeRequest(TypeReference<T> typeRef, String url) {

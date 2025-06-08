@@ -27,7 +27,7 @@ public class LegiscanClient {
         options.addOption("i", "id", true, "ID for operations requiring a bill/session/person ID");
         options.addOption("s", "state", true, "State abbreviation (e.g., CA, TX)");
         options.addOption("y", "year", true, "Year filter (e.g., 2024)");
-        options.addOption("sp", "special", true, "Special. Used for cacheDataset. (default: false)");
+        options.addOption("sp", "special", false, "Special. Used for cacheDataset. (default: false)");
         options.addOption("q", "query", true, "Query string for search");
         options.addOption("a", "accessKey", true, "Access key for dataset retrieval");
         options.addOption("f", "format", true, "Format for dataset (json, csv)");
@@ -52,6 +52,8 @@ public class LegiscanClient {
 
         String apiKey = cmd.getOptionValue("key");
         String op = cmd.getOptionValue("operation");
+        
+        validateRequiredArgs(cmd, op);
 
         LegiscanService service;
         if (cmd.hasOption("no-cache") && !op.equals("cacheDataset")) {
@@ -76,8 +78,8 @@ public class LegiscanClient {
             switch (op) {
             	case "cacheDataset" -> {
             		var cacheService = (CachedLegiscanService)service;
-            		var cached = cacheService.cacheDataset(cmd.getOptionValue("state"), Integer.parseInt(cmd.getOptionValue("year")), Boolean.parseBoolean(cmd.getOptionValue("special")));
-            		System.out.println("Successfully loaded [" + cached.getDataset().getSessionName() + "] into cache [" + cacheService.getCache().toString() + "]. Dataset contained " + cached.getPeople().size() + " people, " + cached.getBills().size()+ " bills, and " + cached.getVotes().size()+ " votes.");
+            		var cached = cacheService.cacheDataset(cmd.getOptionValue("state"), Integer.parseInt(cmd.getOptionValue("year")), cmd.hasOption("special"));
+            		System.out.println("Successfully loaded [" + cached.getDataset().getSessionName() + "] into cache [" + cacheService.getCache().toString() + "]. Dataset contains " + cached.getPeople().size() + " people, " + cached.getBills().size()+ " bills, and " + cached.getVotes().size()+ " votes.");
             	}
                 case "getBill" -> System.out.println(outputMapper.writeValueAsString(service.getBill(Integer.parseInt(cmd.getOptionValue("id")))));
                 case "getBillText" -> System.out.println(outputMapper.writeValueAsString(service.getBillText(Integer.parseInt(cmd.getOptionValue("id")))));
@@ -135,6 +137,43 @@ public class LegiscanClient {
         } catch (Exception e) {
             System.err.println("Operation failed: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+    
+    private static void validateRequiredArgs(CommandLine cmd, String op) {
+        switch (op) {
+            case "cacheDataset" -> {
+                require(cmd, "state");
+                require(cmd, "year");
+            }
+            case "getBill", "getBillText", "getAmendment", "getSupplement", "getRollCall",
+                 "getPerson", "getDataset", "getDatasetRaw", "getSessionPeople", "getSponsoredList" -> {
+                require(cmd, "id");
+            }
+            case "getSessionList" -> {
+                require(cmd, "state");
+            }
+            case "getMasterList", "getMasterListRaw" -> {
+                if (!cmd.hasOption("id") && !cmd.hasOption("state")) {
+                    throw new IllegalArgumentException(op + " requires either --id or --state");
+                }
+            }
+            case "getSearch", "getSearchRaw" -> {
+                require(cmd, "query");
+                if (!cmd.hasOption("id") && !cmd.hasOption("state")) {
+                    throw new IllegalArgumentException(op + " requires either --id or --state");
+                }
+            }
+            case "getDatasetList" -> {
+                require(cmd, "state");
+            }
+            default -> throw new IllegalArgumentException("Unknown operation: " + op);
+        }
+    }
+
+    private static void require(CommandLine cmd, String opt) {
+        if (!cmd.hasOption(opt)) {
+            throw new IllegalArgumentException("Missing required option: --" + opt);
         }
     }
 }

@@ -1,22 +1,38 @@
 package us.poliscore.legiscan.view;
 
-import com.fasterxml.jackson.annotation.JsonAnySetter;
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
-
 import java.util.HashMap;
 import java.util.Map;
+
+import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import lombok.Data;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class LegiscanMasterListView {
 
     private Map<String, BillSummary> bills = new HashMap<>();
+    
+    private LegiscanSessionView session;
 
-    @JsonAnySetter
-    public void addBill(String key, BillSummary value) {
-        bills.put(key, value);
+    // Legiscan for some reason is putting a 'session' object inside the 'bills' map that it returns. So we need a custom parser.
+    @JsonProperty("bills")
+    public void setRawBills(Map<String, Object> raw) {
+        bills = new HashMap<>();
+        ObjectMapper mapper = new ObjectMapper();
+
+        for (Map.Entry<String, Object> entry : raw.entrySet()) {
+            if ("session".equals(entry.getKey())) {
+                session = mapper.convertValue(entry.getValue(), LegiscanSessionView.class);
+            } else {
+                BillSummary summary = mapper.convertValue(entry.getValue(), BillSummary.class);
+                bills.put(entry.getKey(), summary);
+            }
+        }
     }
 
     @Data

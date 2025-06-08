@@ -118,17 +118,24 @@ public class CachedLegiscanService extends LegiscanService {
         }
     }
     
+    public static void main(String[] args) {
+    	var client = CachedLegiscanService.builder(args[0]).build();
+    	
+    	client.cacheDataset("US", 2024);
+	}
+    
     protected LegiscanResponse getOrRequest(String cacheKey, String url) {
-    	if (cache.containsKey(cacheKey)) {
+    	var cached = cache.getOrExpire(cacheKey).orElse(null);
+    	
+    	if (cached != null) {
     		LOGGER.fine("Pulling object [" + cacheKey + "] from cache.");
+    		return cached;
     	}
     	
-        return cache.get(cacheKey).orElseGet(() -> {
-        	LOGGER.info("Fetching object [" + cacheKey + "] from Legiscan.");
-            LegiscanResponse value = makeRequest(url);
-            cache.put(cacheKey, value);
-            return value;
-        });
+    	LOGGER.info("Fetching object [" + cacheKey + "] from Legiscan.");
+        LegiscanResponse value = makeRequest(url);
+        cache.put(cacheKey, value);
+        return value;
     }
 
     protected String cacheKeyFromUrl(String url) {
@@ -285,6 +292,7 @@ public class CachedLegiscanService extends LegiscanService {
                 cacheKey,
                 url
         );
+        
         return response.getBill();
     }
     
@@ -385,7 +393,7 @@ public class CachedLegiscanService extends LegiscanService {
         
         var typeRef = new TypeReference<byte[]>(){};
         
-        return cache.get(cacheKey, typeRef).orElseGet(() -> {
+        return cache.getOrExpire(cacheKey, typeRef).orElseGet(() -> {
             byte[] value = makeRequestRaw(url);
             cache.put(cacheKey, value);
             return value;

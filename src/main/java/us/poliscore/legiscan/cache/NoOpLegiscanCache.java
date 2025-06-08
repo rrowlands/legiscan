@@ -7,15 +7,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import us.poliscore.legiscan.view.LegiscanResponse;
 
 public class NoOpLegiscanCache implements LegiscanCache {
-    @Override
-    public <T> Optional<T> get(String key, TypeReference<T> typeRef) {
-        return Optional.empty();
-    }
-    
-    @Override
-    public Optional<LegiscanResponse> get(String key) {
-        return Optional.empty();
-    }
 
     @Override
     public void put(String key, Object value) {
@@ -38,7 +29,22 @@ public class NoOpLegiscanCache implements LegiscanCache {
 	}
 
 	@Override
-	public boolean containsKey(String key) {
+	public boolean presentAndValid(String key) {
 		return false;
+	}
+
+	@Override
+	public Optional<CachedEntry> peek(String key) {
+		return Optional.empty();
+	}
+
+	@Override
+	public Optional<LegiscanResponse> getOrExpire(String key) {
+		return Optional.empty();
+	}
+
+	@Override
+	public <T> Optional<T> getOrExpire(String key, TypeReference<T> typeRef) {
+		return Optional.empty();
 	}
 }
