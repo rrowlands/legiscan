@@ -58,6 +58,6 @@ usage: LegiscanClient
 
 ## About the Author
 
-This library is provided free of charge under MIT license as part of the larger mission of PoliScore - Making congressional legislation more understandable accessible.
+This library is provided free of charge under MIT license as part of the larger mission of PoliScore - Making congressional legislation more understandable and accessible.
 
 https://poliscore.us/about
