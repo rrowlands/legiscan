@@ -4,8 +4,6 @@ import java.io.File;
 import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,8 +18,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import lombok.Getter;
 import lombok.SneakyThrows;
-import net.lingala.zip4j.ZipFile;
-import us.poliscore.legiscan.PoliscoreLegiscanUtil;
 import us.poliscore.legiscan.cache.CachedLegiscanDataset;
 import us.poliscore.legiscan.cache.FileSystemLegiscanCache;
 import us.poliscore.legiscan.cache.LegiscanCache;
@@ -30,6 +26,7 @@ import us.poliscore.legiscan.view.LegiscanBillTextView;
 import us.poliscore.legiscan.view.LegiscanBillView;
 import us.poliscore.legiscan.view.LegiscanDatasetView;
 import us.poliscore.legiscan.view.LegiscanMasterListView;
+import us.poliscore.legiscan.view.LegiscanMonitorView;
 import us.poliscore.legiscan.view.LegiscanPeopleView;
 import us.poliscore.legiscan.view.LegiscanResponse;
 import us.poliscore.legiscan.view.LegiscanRollCallView;
@@ -424,6 +421,24 @@ public class CachedLegiscanService extends LegiscanService {
         );
         
         return response.getSponsoredbills();
+    }
+
+    @Override
+    public List<LegiscanMonitorView> getMonitorList(String record) {
+        String url = buildUrl("getMonitorList", "record", record != null ? record : "current");
+        String cacheKey = cacheKeyFromUrl(url);
+
+        LegiscanResponse response = getOrRequest(cacheKey, url);
+        return new ArrayList<>(response.getMonitorlist().values());
+    }
+
+    @Override
+    public List<LegiscanMonitorView> getMonitorListRaw(String record) {
+        String url = buildUrl("getMonitorListRaw", "record", record != null ? record : "current");
+        String cacheKey = cacheKeyFromUrl(url);
+
+        LegiscanResponse response = getOrRequest(cacheKey, url);
+        return new ArrayList<>(response.getMonitorlist().values());
     }
 
 }
