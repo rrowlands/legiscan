@@ -1,6 +1,8 @@
 
 package us.poliscore.legiscan.view;
 
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -78,4 +80,10 @@ public class LegiscanPeopleView {
     
     @JsonProperty("committee_id")
     private Integer committeeId;
+    
+    @Data
+    public static class LegiscanSessionPeopleView {
+    	private LegiscanSessionView session;
+        private List<LegiscanPeopleView> people;
+    }
 }

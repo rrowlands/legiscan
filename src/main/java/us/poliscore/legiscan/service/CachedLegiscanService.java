@@ -115,12 +115,6 @@ public class CachedLegiscanService extends LegiscanService {
         }
     }
     
-    public static void main(String[] args) {
-    	var client = CachedLegiscanService.builder(args[0]).build();
-    	
-    	client.cacheDataset("US", 2024);
-	}
-    
     protected LegiscanResponse getOrRequest(String cacheKey, String url) {
     	var cached = cache.getOrExpire(cacheKey).orElse(null);
     	
@@ -372,7 +366,7 @@ public class CachedLegiscanService extends LegiscanService {
     
     @Override
     public LegiscanDatasetView getDataset(int sessionId, String accessKey, String format) {
-        String url = buildUrl("getDataset", "id", String.valueOf(sessionId), "accessKey", accessKey, "format", format);
+        String url = buildUrl("getDataset", "id", String.valueOf(sessionId), "access_key", accessKey, "format", format);
         String cacheKey = cacheKeyFromUrl(url);
 
         LegiscanResponse response = getOrRequest(
@@ -407,7 +401,7 @@ public class CachedLegiscanService extends LegiscanService {
                 url
         );
         
-        return response.getSessionpeople();
+        return response.getSessionpeople().getPeople();
     }
 
     @Override
@@ -429,7 +423,7 @@ public class CachedLegiscanService extends LegiscanService {
         String cacheKey = cacheKeyFromUrl(url);
 
         LegiscanResponse response = getOrRequest(cacheKey, url);
-        return new ArrayList<>(response.getMonitorlist().values());
+        return response.getMonitorlist();
     }
 
     @Override
@@ -438,7 +432,7 @@ public class CachedLegiscanService extends LegiscanService {
         String cacheKey = cacheKeyFromUrl(url);
 
         LegiscanResponse response = getOrRequest(cacheKey, url);
-        return new ArrayList<>(response.getMonitorlist().values());
+        return response.getMonitorlist();
     }
 
 }

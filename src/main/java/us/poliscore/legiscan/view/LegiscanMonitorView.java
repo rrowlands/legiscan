@@ -1,6 +1,17 @@
 package us.poliscore.legiscan.view;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.ObjectCodec;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonNode;
+
 import lombok.Data;
 
 @Data
@@ -18,4 +29,31 @@ public class LegiscanMonitorView {
     private String last_action;
     private String title;
     private String description;
+    
+    public static class MonitorListDeserializer extends JsonDeserializer<List<LegiscanMonitorView>> {
+
+        @Override
+        public List<LegiscanMonitorView> deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            ObjectCodec codec = p.getCodec();
+            JsonNode node = codec.readTree(p);
+
+            List<LegiscanMonitorView> result = new ArrayList<>();
+
+            if (node.isArray()) {
+                // If the monitorlist is a JSON array
+                for (JsonNode item : node) {
+                    result.add(codec.treeToValue(item, LegiscanMonitorView.class));
+                }
+            } else if (node.isObject()) {
+                // If the monitorlist is a JSON object with numeric keys
+                Iterator<JsonNode> elements = node.elements();
+                while (elements.hasNext()) {
+                    JsonNode item = elements.next();
+                    result.add(codec.treeToValue(item, LegiscanMonitorView.class));
+                }
+            }
+
+            return result;
+        }
+    }
 }

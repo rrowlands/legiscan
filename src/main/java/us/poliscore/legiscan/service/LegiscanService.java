@@ -68,7 +68,7 @@ public class LegiscanService {
                 .append("&op=").append(endpoint);
 
         for (int i = 0; i < params.length; i += 2) {
-            if (i + 1 < params.length && params[i] != null && params[i+1] != null) {
+            if (i + 1 < params.length && params[i] != null && params[i+1] != null && !params[i].equals("null") && !params[i+1].equals("null")) {
                 url.append("&").append(params[i]).append("=")
                         .append(URLEncoder.encode(params[i + 1], StandardCharsets.UTF_8));
             }
@@ -438,7 +438,7 @@ public class LegiscanService {
      * @return Dataset archive including meta information, the dataset itself is base64 encoded to allow for binary ZIP transfers.
      */
     public LegiscanDatasetView getDataset(int sessionId, String accessKey, String format) {
-        String url = buildUrl("getDataset", "id", String.valueOf(sessionId), "accessKey", accessKey, "format", format);
+        String url = buildUrl("getDataset", "id", String.valueOf(sessionId), "access_key", accessKey, "format", format);
 
         LegiscanResponse response = makeRequest(
                 new TypeReference<LegiscanResponse>() {},
@@ -485,7 +485,7 @@ public class LegiscanService {
                 url
         );
         
-        return response.getSessionpeople();
+        return response.getSessionpeople().getPeople();
     }
 
     /**
@@ -522,7 +522,7 @@ public class LegiscanService {
     public List<LegiscanMonitorView> getMonitorList(String record) {
         String url = buildUrl("getMonitorList", "record", record != null ? record : "current");
         LegiscanResponse response = makeRequest(new TypeReference<LegiscanResponse>() {}, url);
-        return new ArrayList<>(response.getMonitorlist().values());
+        return response.getMonitorlist();
     }
 
     /**
@@ -540,7 +540,7 @@ public class LegiscanService {
     public List<LegiscanMonitorView> getMonitorListRaw(String record) {
         String url = buildUrl("getMonitorListRaw", "record", record != null ? record : "current");
         LegiscanResponse response = makeRequest(new TypeReference<LegiscanResponse>() {}, url);
-        return new ArrayList<>(response.getMonitorlist().values());
+        return response.getMonitorlist();
     }
 
     /**

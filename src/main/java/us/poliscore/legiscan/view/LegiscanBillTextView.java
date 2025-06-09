@@ -1,40 +1,37 @@
 package us.poliscore.legiscan.view;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.Data;
 
 @Data
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class LegiscanBillTextView {
 
-    private String status;
-    private Text text;
+	@JsonProperty("doc_id")
+    private int docId;
 
-    @Data
-    public static class Text {
-        @JsonProperty("doc_id")
-        private int docId;
+    @JsonProperty("bill_id")
+    private int billId;
 
-        @JsonProperty("bill_id")
-        private int billId;
+    private String date;
+    private String type;
 
-        private String date;
-        private String type;
+    @JsonProperty("type_id")
+    private int typeId;
 
-        @JsonProperty("type_id")
-        private int typeId;
+    private String mime;
 
-        private String mime;
+    @JsonProperty("mime_id")
+    private int mimeId;
 
-        @JsonProperty("mime_id")
-        private int mimeId;
+    @JsonProperty("text_size")
+    private int textSize;
 
-        @JsonProperty("text_size")
-        private int textSize;
+    @JsonProperty("text_hash")
+    private String textHash;
 
-        @JsonProperty("text_hash")
-        private String textHash;
-
-        private String doc; // A base64 encoded string
-    }
+    private String doc; // A base64 encoded string
 }
 

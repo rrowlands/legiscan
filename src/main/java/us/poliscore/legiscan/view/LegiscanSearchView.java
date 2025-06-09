@@ -1,12 +1,22 @@
 package us.poliscore.legiscan.view;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import lombok.Data;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.ObjectCodec;
+import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 
-import java.util.HashMap;
-import java.util.Map;
+import lombok.Data;
 
 @Data
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -14,16 +24,9 @@ public class LegiscanSearchView {
 
     private Summary summary;
 
-    private Map<String, Result> results = new HashMap<>();
-
-    @JsonAnySetter
-    public void addResult(String key, Object value) {
-        if (!"summary".equals(key) && value instanceof Map) {
-            // Let Jackson handle conversion in a clean way
-            Result result = new Result((Map<?, ?>) value);
-            results.put(key, result);
-        }
-    }
+    // More api weirdness - is it an array or a map?
+    @JsonDeserialize(using = SearchResultsDeserializer.class)
+    private List<Result> results = new ArrayList<>();
 
     @Data
     @JsonIgnoreProperties(ignoreUnknown = true)
@@ -101,4 +104,33 @@ public class LegiscanSearchView {
             return 0;
         }
     }
+    
+    public static class SearchResultsDeserializer extends JsonDeserializer<List<LegiscanSearchView.Result>> {
+
+        @Override
+        public List<LegiscanSearchView.Result> deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
+            ObjectCodec codec = p.getCodec();
+            JsonNode root = codec.readTree(p);
+            List<LegiscanSearchView.Result> results = new ArrayList<>();
+
+            JsonNode resultsNode = root.get("results");
+
+            if (resultsNode == null || resultsNode.isNull()) return results;
+
+            if (resultsNode.isArray()) {
+                for (JsonNode item : resultsNode) {
+                    results.add(codec.treeToValue(item, LegiscanSearchView.Result.class));
+                }
+            } else if (resultsNode.isObject()) {
+                Iterator<JsonNode> elements = resultsNode.elements();
+                while (elements.hasNext()) {
+                    JsonNode item = elements.next();
+                    results.add(codec.treeToValue(item, LegiscanSearchView.Result.class));
+                }
+            }
+
+            return results;
+        }
+    }
+
 }
