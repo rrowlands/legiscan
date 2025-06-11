@@ -4,8 +4,12 @@
 
 	<groupId>us.poliscore</groupId>
 	<artifactId>legiscan</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
+	<version>1.0.0-SNAPSHOT</version>
 	<packaging>jar</packaging>
+	
+	<name>LegiScan Java Client</name>
+	<description>Java client for interacting with the LegiScan API</description>
+	<url>https://poliscore.us</url>
 
 	<properties>
 		<compiler-plugin.version>3.12.1</compiler-plugin.version>
@@ -14,6 +18,28 @@
 		<maven.compiler.target>21</maven.compiler.target>
 		<surefire-plugin.version>3.2.5</surefire-plugin.version>
 	</properties>
+	
+	<licenses>
+	  <license>
+	    <name>MIT License</name>
+	    <url>https://opensource.org/licenses/MIT</url>
+	    <distribution>repo</distribution>
+	  </license>
+	</licenses>
+	<developers>
+	  <developer>
+	    <id>rrowlands</id>
+	    <name>Richard Rowlands</name>
+	    <email>rrowlands@hextechstudios.net</email>
+	    <url>https://poliscore.us</url>
+	    <roles><role>developer</role></roles>
+	  </developer>
+	</developers>
+	<scm>
+	  <connection>scm:git:git://github.com/rrowlands/legiscan.git</connection>
+	  <developerConnection>scm:git:ssh://github.com/rrowlands/legiscan.git</developerConnection>
+	  <url>https://github.com/rrowlands/legiscan</url>
+	</scm>
 
 	<dependencies>
 		<dependency>
@@ -68,6 +94,29 @@
 
 	<build>
 		<plugins>
+			<plugin>
+	          <groupId>org.sonatype.central</groupId>
+	          <artifactId>central-publishing-maven-plugin</artifactId>
+	          <version>0.7.0</version>
+	          <extensions>true</extensions>
+	          <configuration>
+	            <publishingServerId>central</publishingServerId>
+	          </configuration>
+	        </plugin>
+	        <!--
+	        <plugin>
+		      <groupId>org.apache.maven.plugins</groupId>
+		      <artifactId>maven-gpg-plugin</artifactId>
+		      <version>3.1.0</version>
+		      <executions>
+		        <execution>
+		          <id>sign-artifacts</id>
+		          <phase>verify</phase>
+		          <goals><goal>sign</goal></goals>
+		        </execution>
+		      </executions>
+		    </plugin>
+		    -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-shade-plugin</artifactId>

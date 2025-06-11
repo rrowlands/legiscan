@@ -53,7 +53,7 @@ public class LegiscanSponsorView {
     
     private Integer votesmart_id;
     
-    private Integer opensecrets_id;
+    private String opensecrets_id;
     
     private Integer knowwho_pid;
     

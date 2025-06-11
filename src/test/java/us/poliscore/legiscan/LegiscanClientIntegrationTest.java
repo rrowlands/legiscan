@@ -16,6 +16,15 @@ public class LegiscanClientIntegrationTest {
         };
         LegiscanClient.main(args);
     }
+    
+    @Test
+    void test_cacheDataset() throws Exception {
+        String[] args = {
+            "-k", TEST_API_KEY,
+            "-op", "cacheDataset", "--state", "US", "--year", "2024"
+        };
+        LegiscanClient.main(args);
+    }
 
     @Test
     void test_getDataset() throws Exception {
