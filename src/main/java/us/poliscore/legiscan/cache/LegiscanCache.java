@@ -32,7 +32,7 @@ public interface LegiscanCache {
      * Attempts to fetch the object from the cache. If the object is expired, it will be cleared out from the cache and Optional.empty() will be returned.
      * 
      * @param key
-     * @pram typeRef
+     * @param typeRef
      * @return
      */
     public <T> Optional<T> getOrExpire(String key, TypeReference<T> typeRef);

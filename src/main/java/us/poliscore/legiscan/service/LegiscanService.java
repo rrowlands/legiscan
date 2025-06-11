@@ -203,7 +203,7 @@ public class LegiscanService {
      * 
      * Refresh frequency: 1 hour
      * 
-     * @param stateCode
+     * @param sessionId
      * @return List of bill information including bill_id and bill_number. The change_hash is a representation of the current bill status; it should be stored for a quick comparison to subsequent getMasterListRaw calls to detect what bills have changed and need updating via getBill.
      */
     public LegiscanMasterListView getMasterListRaw(int sessionId) {
