@@ -1,6 +1,9 @@
 
 package us.poliscore.legiscan.view;
 
+import java.time.LocalDate;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -11,6 +14,10 @@ public class LegiscanTextMetadataView {
     
     @JsonProperty("doc_id")
     private Integer docId;
+    
+    @JsonProperty("date")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate date;
     
     @JsonProperty("type")
     private String type;
@@ -32,4 +39,6 @@ public class LegiscanTextMetadataView {
     
     @JsonProperty("text_size")
     private Integer textSize;
+    
+    private String text_hash;
 }

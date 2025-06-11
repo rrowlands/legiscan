@@ -1,8 +1,10 @@
 
 package us.poliscore.legiscan.view;
 
+import java.time.LocalDate;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
@@ -21,29 +23,8 @@ public class LegiscanBillView {
     @JsonProperty("bill_id")
     private Integer billId;
     
-    @JsonProperty("bill_number")
-    private String billNumber;
-    
     @JsonProperty("change_hash")
     private String changeHash;
-    
-    @JsonProperty("bill_type")
-    private String billType;
-    
-    @JsonProperty("bill_type_id")
-    private Integer billTypeId;
-    
-    @JsonProperty("body")
-    private String body;
-    
-    @JsonProperty("body_id")
-    private Integer bodyId;
-    
-    @JsonProperty("current_body")
-    private String currentBody;
-    
-    @JsonProperty("current_body_id")
-    private Integer currentBodyId;
     
     @JsonProperty("session_id")
     private Integer sessionId;
@@ -64,7 +45,8 @@ public class LegiscanBillView {
     private Integer status;
     
     @JsonProperty("status_date")
-    private String statusDate;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate statusDate;
     
     @JsonProperty("progress")
     private List<LegiscanProgressView> progress;
@@ -75,14 +57,26 @@ public class LegiscanBillView {
     @JsonProperty("state_id")
     private Integer stateId;
     
-    @JsonProperty("bill_draft_id")
-    private String billDraftId;
+    @JsonProperty("bill_number")
+    private String billNumber;
     
-    @JsonProperty("draft_revision")
-    private Integer draftRevision;
+    @JsonProperty("bill_type")
+    private String billType;
     
-    @JsonProperty("ml_draft_id")
-    private String mlDraftId;
+    @JsonProperty("bill_type_id")
+    private Integer billTypeId;
+    
+    @JsonProperty("body")
+    private String body;
+    
+    @JsonProperty("body_id")
+    private Integer bodyId;
+    
+    @JsonProperty("current_body")
+    private String currentBody;
+    
+    @JsonProperty("current_body_id")
+    private Integer currentBodyId;
     
     @JsonProperty("title")
     private String title;
@@ -102,8 +96,10 @@ public class LegiscanBillView {
     @JsonDeserialize(using = LegiscanCommitteeViewListDeserializer.class)
     private List<LegiscanCommitteeView> committee;
     
-    @JsonProperty("referral_date")
-    private String referralDate;
+    private List<LegiscanReferralView> referrals;
+    
+    @JsonProperty("history")
+    private List<LegiscanHistoryView> history;
     
     @JsonProperty("sponsors")
     private List<LegiscanSponsorView> sponsors;
@@ -128,7 +124,4 @@ public class LegiscanBillView {
     
     @JsonProperty("calendar")
     private List<LegiscanCalendarView> calendar;
-    
-    @JsonProperty("history")
-    private List<LegiscanHistoryView> history;
 }

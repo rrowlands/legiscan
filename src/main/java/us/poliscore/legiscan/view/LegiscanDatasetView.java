@@ -1,5 +1,8 @@
 package us.poliscore.legiscan.view;
 
+import java.time.LocalDate;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
@@ -30,9 +33,10 @@ public class LegiscanDatasetView {
 
     @JsonProperty("dataset_hash")
     private String datasetHash;
-
+    
     @JsonProperty("dataset_date")
-    private String datasetDate;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate datasetDate;
 
     @JsonProperty("dataset_size")
     private int datasetSize;

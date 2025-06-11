@@ -1,12 +1,14 @@
 package us.poliscore.legiscan.view;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
 import com.fasterxml.jackson.annotation.JsonAnySetter;
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonParser;
@@ -67,7 +69,8 @@ public class LegiscanSearchView {
         private String researchUrl;
 
         @JsonProperty("last_action_date")
-        private String lastActionDate;
+        @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+        private LocalDate lastActionDate;
 
         @JsonProperty("last_action")
         private String lastAction;
@@ -84,9 +87,18 @@ public class LegiscanSearchView {
             this.url = getString(map.get("url"));
             this.textUrl = getString(map.get("text_url"));
             this.researchUrl = getString(map.get("research_url"));
-            this.lastActionDate = getString(map.get("last_action_date"));
+            this.lastActionDate = getDate(map.get("last_action_date"));
             this.lastAction = getString(map.get("last_action"));
             this.title = getString(map.get("title"));
+        }
+        
+        private LocalDate getDate(Object val) {
+            if (val instanceof String s) {
+                try {
+                    return LocalDate.parse(s); // defaults to ISO-8601: yyyy-MM-dd
+                } catch (Exception ignored) {}
+            }
+            return null;
         }
 
         private String getString(Object val) {

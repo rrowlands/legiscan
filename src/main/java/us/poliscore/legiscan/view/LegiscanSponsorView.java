@@ -48,6 +48,17 @@ public class LegiscanSponsorView {
     @JsonProperty("district")
     private String district;
     
+    @JsonProperty("ftm_eid")
+    private Integer ftm_eid;
+    
+    private Integer votesmart_id;
+    
+    private Integer opensecrets_id;
+    
+    private Integer knowwho_pid;
+    
+    private String ballotpedia;
+    
     @JsonProperty("sponsor_type_id")
     private Integer sponsorTypeId;
     

@@ -1,11 +1,14 @@
 package us.poliscore.legiscan.view;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.ObjectCodec;
 import com.fasterxml.jackson.databind.DeserializationContext;
@@ -23,9 +26,17 @@ public class LegiscanMonitorView {
     private int stance;
     private String change_hash;
     private String url;
-    private String status_date;
+    
+    @JsonProperty("status_date")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate statusDate;
+    
     private int status;
-    private String last_action_date;
+    
+    @JsonProperty("last_action_date")
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate lastActionDate;
+    
     private String last_action;
     private String title;
     private String description;

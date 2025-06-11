@@ -1,8 +1,12 @@
 
 package us.poliscore.legiscan.view;
 
+import java.time.LocalDate;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
+
 import lombok.Data;
 
 @Data
@@ -13,7 +17,8 @@ public class LegiscanVoteView {
     private Integer rollCallId;
     
     @JsonProperty("date")
-    private String date;
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate date;
     
     @JsonProperty("desc")
     private String description;
