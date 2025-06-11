@@ -15,6 +15,8 @@ import java.util.logging.Logger;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import lombok.SneakyThrows;
 import us.poliscore.legiscan.exception.LegiscanException;
@@ -59,7 +61,7 @@ public class LegiscanService {
     }
     
     public LegiscanService(String apiKey) {
-        this(apiKey, new ObjectMapper());
+        this(apiKey, JsonMapper.builder().addModule(new JavaTimeModule()).build());
     }
 
     protected String buildUrl(String endpoint, String... params) {

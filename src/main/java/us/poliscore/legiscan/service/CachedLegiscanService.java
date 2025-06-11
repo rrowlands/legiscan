@@ -15,6 +15,8 @@ import org.apache.commons.lang3.ArrayUtils;
 import com.fasterxml.jackson.core.StreamReadConstraints;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import lombok.Getter;
 import lombok.SneakyThrows;
@@ -94,7 +96,7 @@ public class CachedLegiscanService extends LegiscanService {
 
         public CachedLegiscanService build() {
             if (this.objectMapper == null) {
-            	this.objectMapper = new ObjectMapper();
+            	this.objectMapper = JsonMapper.builder().addModule(new JavaTimeModule()).build();
             	
             	// The dataset fetching methods have some large zips which are serialized into json. Without this the deserialization will fail
             	objectMapper.getFactory().setStreamReadConstraints(StreamReadConstraints.builder().maxStringLength(100_000_000).build());

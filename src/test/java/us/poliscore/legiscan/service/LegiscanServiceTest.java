@@ -21,6 +21,8 @@ import org.junit.jupiter.api.Test;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import us.poliscore.legiscan.cache.LegiscanCache;
 import us.poliscore.legiscan.exception.LegiscanException;
@@ -35,7 +37,7 @@ public class LegiscanServiceTest {
 
 //    @BeforeEach
 //    void setup() {
-//        objectMapper = new ObjectMapper();
+//        objectMapper = JsonMapper.builder().addModule(new JavaTimeModule()).build();
 //        mockCache = mock(LegiscanCache.class);
 //        service = new LegiscanService("fake-api-key", objectMapper, mockCache);
 //        injectFakeHttpClient(service);

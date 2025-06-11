@@ -16,6 +16,8 @@ import org.junit.jupiter.api.TestInstance;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class FileSystemLegiscanCacheTest {
@@ -26,7 +28,7 @@ public class FileSystemLegiscanCacheTest {
 
     @BeforeAll
     void setup() throws Exception {
-        objectMapper = new ObjectMapper();
+        objectMapper = JsonMapper.builder().addModule(new JavaTimeModule()).build();
         tempDir = Files.createTempDirectory("legiscan-cache-test").toFile();
     }
 

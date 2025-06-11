@@ -10,6 +10,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import lombok.Data;
 
@@ -25,7 +27,7 @@ public class LegiscanMasterListView {
     @JsonProperty("bills")
     public void setRawBills(Map<String, Object> raw) {
         bills = new HashMap<>();
-        ObjectMapper mapper = new ObjectMapper();
+        ObjectMapper mapper = JsonMapper.builder().addModule(new JavaTimeModule()).build();
 
         for (Map.Entry<String, Object> entry : raw.entrySet()) {
             if ("session".equals(entry.getKey())) {

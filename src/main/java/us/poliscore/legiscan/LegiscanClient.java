@@ -11,6 +11,8 @@ import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 
 import lombok.SneakyThrows;
 import us.poliscore.legiscan.service.CachedLegiscanService;
@@ -79,7 +81,7 @@ public class LegiscanClient {
             service = builder.build();
         }
 
-        ObjectMapper outputMapper = new ObjectMapper();
+        ObjectMapper outputMapper = JsonMapper.builder().addModule(new JavaTimeModule()).build();
 
         switch (op) {
         	case "cacheDataset" -> {
